@@ -2,15 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk Engine V6 - Debug Mode</title>
+    <title>Phonk V7 - Connection Fix</title>
     <style>
-        body { margin: 0; background: #111; font-family: monospace; color: white; overflow: hidden; }
+        body { margin: 0; background: #080808; font-family: monospace; color: white; overflow: hidden; }
         
-        /* LAYERS */
+        /* VISUAL LAYERS */
         #flash-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 20; pointer-events: none; opacity: 0;
-            background: white; /* Default to white flash */
+            pointer-events: none; z-index: 10; opacity: 0; background: white; mix-blend-mode: overlay;
         }
         
         #canvas-layer { position: absolute; top: 0; left: 0; z-index: 1; }
@@ -18,247 +17,273 @@
         #logo-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 300px; height: 300px; z-index: 5;
-            background: red; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        }
-        
-        /* CONTROLS */
-        #ui {
-            position: absolute; top: 0; left: 0; width: 350px; height: 100%;
-            background: #222; z-index: 30; padding: 20px; box-sizing: border-box;
-            border-right: 2px solid #444; overflow-y: auto;
-        }
-        
-        .debug-bar-container {
-            width: 100%; height: 20px; background: #000; margin-bottom: 20px; position: relative; border: 1px solid #555;
-        }
-        #debug-bar { width: 0%; height: 100%; background: lime; transition: width 0.05s linear; }
-        #threshold-line {
-            position: absolute; top: 0; bottom: 0; width: 2px; background: red; z-index: 2;
+            background-color: #111; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 0 5px #333;
+            background-size: cover; background-position: center;
         }
 
-        button { padding: 10px; width: 100%; margin-bottom: 10px; cursor: pointer; font-weight: bold; }
-        .start-btn { background: lime; border: none; font-size: 16px; }
+        /* UI CONTROLS */
+        #ui {
+            position: absolute; top: 0; left: 0; width: 340px; height: 100vh;
+            background: rgba(10,10,10,0.95); border-right: 1px solid #333;
+            padding: 15px; box-sizing: border-box; z-index: 20; overflow-y: auto;
+        }
+
+        h3 { border-bottom: 2px solid #ff0055; padding-bottom: 5px; color: #fff; margin-top: 20px; }
+        label { color: #888; font-size: 11px; display: block; margin-top: 10px; }
+        input[type="range"] { width: 100%; margin: 5px 0; cursor: pointer; }
         
-        .effect-row { background: #333; padding: 10px; margin-bottom: 5px; border-left: 4px solid orange; }
-        input[type="range"] { width: 100%; }
-        label { display: block; margin-bottom: 5px; color: #ccc; }
+        /* THE AUDIO PLAYER */
+        audio { width: 100%; margin-top: 10px; border-radius: 4px; }
+        
+        /* DEBUG BASS METER */
+        .meter-box { width: 100%; height: 25px; background: #222; border: 1px solid #444; position: relative; margin-top: 5px; }
+        #bass-fill { height: 100%; width: 0%; background: #00ff00; transition: width 0.05s linear; }
+        #thresh-line { position: absolute; top: 0; bottom: 0; width: 2px; background: red; left: 50%; z-index: 5; }
+
+        /* EFFECT STACK */
+        .effect-item { background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-left: 3px solid #555; }
+        .effect-header { display: flex; justify-content: space-between; color: white; font-weight: bold; font-size: 12px; }
+        .remove { color: #666; cursor: pointer; } .remove:hover { color: red; }
+
+        button.add-fx { width: 100%; padding: 8px; background: #222; border: 1px dashed #555; color: #ccc; cursor: pointer; margin-top: 5px; }
+        button.add-fx:hover { border-color: #ff0055; color: white; }
+
+        #status-log { position: absolute; bottom: 10px; left: 10px; color: yellow; font-size: 10px; z-index: 100; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="flash-layer"></div>
     <canvas id="canvas-layer"></canvas>
-    <div id="logo-container">LOGO</div>
+    <div id="logo-container"></div>
+    <div id="status-log">Waiting for user...</div>
 
     <div id="ui">
-        <h2>V6 DEBUGGER</h2>
+        <h2>PHONK ENGINE V7</h2>
         
-        <label>1. Load Song</label>
-        <input type="file" id="audio-file" accept="audio/*">
+        <label>1. SELECT SONG</label>
+        <input type="file" id="file-upload" accept="audio/*">
         
-        <label>2. START ENGINE (Required)</label>
-        <button class="start-btn" onclick="startAudioContext()">CLICK TO START</button>
+        <label>2. PLAY AUDIO (Use this player)</label>
+        <audio id="audio-player" controls></audio>
+        
+        <label>3. CENTER IMAGE</label>
+        <input type="file" id="img-upload" accept="image/*">
 
-        <hr style="border-color:#444">
-
-        <label>BASS METER (Must cross Red Line)</label>
-        <div class="debug-bar-container">
-            <div id="threshold-line" style="left: 50%;"></div> <div id="debug-bar"></div>
+        <h3>BASS SETTINGS</h3>
+        <label>Bass Meter (Must cross Red Line)</label>
+        <div class="meter-box">
+            <div id="thresh-line"></div>
+            <div id="bass-fill"></div>
         </div>
         
-        <label>Threshold Level: <span id="thresh-val">128</span></label>
-        <input type="range" id="threshold" min="0" max="255" value="128" oninput="updateThreshold(this.value)">
-
-        <hr style="border-color:#444">
-
-        <h3>Effects Stack</h3>
-        <button onclick="addEffect('zoom')">+ Add Zoom</button>
-        <button onclick="addEffect('rotate')">+ Add Rotate</button>
-        <button onclick="addEffect('flash')">+ Add Flash</button>
+        <label>Threshold (Gate)</label>
+        <input type="range" id="threshold" min="0" max="255" value="150" oninput="updateThresh(this.value)">
         
-        <div id="effect-list"></div>
+        <label>Bass Decay (Heavy vs Snappy)</label>
+        <input type="range" id="decay" min="0.1" max="0.95" step="0.05" value="0.85">
+
+        <h3>EFFECTS STACK</h3>
+        <div id="stack-container"></div>
+        <button class="add-fx" onclick="addFx('zoom')">+ ADD ZOOM</button>
+        <button class="add-fx" onclick="addFx('rotate')">+ ADD ROTATE</button>
+        <button class="add-fx" onclick="addFx('exposure')">+ ADD FLASH/EXPOSURE</button>
     </div>
 
     <script>
-        // --- GLOBAL STATE ---
-        const state = {
-            ctx: null,
-            analyser: null,
-            source: null,
-            isPlaying: false,
-            effects: [],
-            bassVal: 0 // 0 to 255
-        };
-
+        // --- GLOBAL VARIABLES ---
+        const audioPlayer = document.getElementById('audio-player');
         const canvas = document.getElementById('canvas-layer');
-        const drawCtx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d');
         const logo = document.getElementById('logo-container');
         const flash = document.getElementById('flash-layer');
-        const debugBar = document.getElementById('debug-bar');
-        const threshLine = document.getElementById('threshold-line');
-
+        const log = document.getElementById('status-log');
+        
+        // Audio Graph
+        let audioCtx, analyser, source;
+        let isConnected = false;
+        
+        // State
+        let effects = [];
+        let smoothedBass = 0;
+        
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // --- 1. AUDIO SYSTEM ---
-        
-        // Browser Policy Fix: User must click a button to initialize AudioContext
-        async function startAudioContext() {
-            if (!state.ctx) {
-                state.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (state.ctx.state === 'suspended') {
-                await state.ctx.resume();
-            }
-            alert("Audio Engine Active. Now upload a song.");
-        }
-
-        document.getElementById('audio-file').addEventListener('change', function(e) {
-            if (!state.ctx) {
-                alert("Please click 'CLICK TO START' first!");
+        // --- 1. SETUP AUDIO (The Fix) ---
+        // We use the 'play' event to trigger the connection. This ensures browser permission.
+        audioPlayer.addEventListener('play', async () => {
+            if (isConnected) {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
                 return;
             }
-            
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = function(ev) {
-                state.ctx.decodeAudioData(ev.target.result, function(buffer) {
-                    if (state.source) state.source.disconnect();
-                    
-                    state.source = state.ctx.createBufferSource();
-                    state.source.buffer = buffer;
-                    
-                    state.analyser = state.ctx.createAnalyser();
-                    state.analyser.fftSize = 256;
-                    
-                    state.source.connect(state.analyser);
-                    state.analyser.connect(state.ctx.destination);
-                    
-                    state.source.start(0);
-                    state.isPlaying = true;
-                    loop();
-                });
-            };
-            reader.readAsArrayBuffer(file);
+
+            try {
+                log.innerText = "Initializing Audio Context...";
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create Source from the HTML Player
+                source = audioCtx.createMediaElementSource(audioPlayer);
+                analyser = audioCtx.createAnalyser();
+                
+                // Settings
+                analyser.fftSize = 256; 
+                
+                // Connect: Source -> Analyser -> Speakers
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                
+                isConnected = true;
+                log.innerText = "Audio Connected! Engine Running.";
+                renderLoop();
+            } catch (e) {
+                log.innerText = "ERROR: " + e.message;
+            }
         });
 
-        // --- 2. THRESHOLD LOGIC ---
-        function updateThreshold(val) {
-            document.getElementById('thresh-val').innerText = val;
-            // Move red line visually
-            const percent = (val / 255) * 100;
-            threshLine.style.left = percent + "%";
-        }
+        // --- 2. FILE HANDLING ---
+        document.getElementById('file-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
+            audioPlayer.play(); // Auto-play to trigger the event above
+        });
 
-        // --- 3. THE LOOP ---
-        function loop() {
-            if (!state.isPlaying) return;
-            requestAnimationFrame(loop);
+        document.getElementById('img-upload').addEventListener('change', function(e) {
+            const url = URL.createObjectURL(e.target.files[0]);
+            logo.style.backgroundImage = `url(${url})`;
+            logo.innerText = "";
+        });
 
-            const bufferLength = state.analyser.frequencyBinCount;
+        // --- 3. THE RENDER LOOP ---
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
+            
+            const bufferLength = analyser.frequencyBinCount;
             const data = new Uint8Array(bufferLength);
-            state.analyser.getByteFrequencyData(data);
+            analyser.getByteFrequencyData(data);
 
-            // A. CALCULATE BASS
-            // Simple average of first 5 bars (Deep Bass)
-            let rawBass = 0;
-            for(let i=0; i<5; i++) rawBass += data[i];
-            rawBass = rawBass / 5;
+            // A. GET BASS (Indices 1,2,3 - Low Freqs)
+            let rawBass = (data[1] + data[2] + data[3]) / 3;
 
-            // B. UPDATE DEBUG METER
-            // Show raw bass on the green bar
-            const bassPercent = (rawBass / 255) * 100;
-            debugBar.style.width = bassPercent + "%";
+            // B. DRAW METER
+            document.getElementById('bass-fill').style.width = (rawBass / 255 * 100) + "%";
 
-            // C. GATE LOGIC
-            const thresh = parseInt(document.getElementById('threshold').value);
-            let activeBass = 0; // This is the value sent to effects
+            // C. THRESHOLD CHECK
+            const threshVal = parseInt(document.getElementById('threshold').value);
+            let activeBass = 0;
 
-            // If Green Bar crosses Red Line
-            if (rawBass > thresh) {
-                // Normalize 0.0 to 1.0 based on how much it crossed
-                activeBass = (rawBass - thresh) / (255 - thresh); 
-                // Cap at 1.0
-                if (activeBass > 1) activeBass = 1;
+            if (rawBass > threshVal) {
+                // If loud enough, calculate strength (0.0 to 1.0)
+                activeBass = (rawBass - threshVal) / (255 - threshVal);
+            }
+
+            // D. SMOOTHING (Envelope)
+            const decay = parseFloat(document.getElementById('decay').value);
+            if (activeBass > smoothedBass) {
+                smoothedBass = activeBass; // Attack (Instant)
             } else {
-                activeBass = 0;
+                smoothedBass *= decay; // Decay (Slow)
             }
 
-            // D. APPLY EFFECTS
-            applyEffects(activeBass);
+            // E. APPLY EFFECTS
+            applyEffects(smoothedBass);
 
-            // E. DRAW SIMPLE SPECTRUM (Visual Confirm)
-            drawCtx.clearRect(0, 0, canvas.width, canvas.height);
-            drawCtx.fillStyle = 'white';
-            const barWidth = (canvas.width / bufferLength) * 2.5;
-            for(let i = 0; i < bufferLength; i++) {
-                const barHeight = data[i];
-                drawCtx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight);
-            }
+            // F. DRAW SPECTRUM
+            drawSpectrum(data, bufferLength, smoothedBass);
         }
 
         // --- 4. EFFECTS LOGIC ---
-        function applyEffects(bassPower) {
-            // Default transforms
+        function applyEffects(bassPower) { // bassPower is 0.0 to 1.0
             let scale = 1;
-            let rotate = 0;
-            let flashOpacity = 0;
+            let rot = 0;
+            let expo = 0;
 
-            state.effects.forEach(eff => {
-                const impact = parseFloat(eff.intensity) * bassPower;
-
-                if (eff.type === 'zoom') {
-                    scale += impact; 
-                } 
-                else if (eff.type === 'rotate') {
-                    rotate += impact * 45; // 45 degrees per 1.0 intensity
-                }
-                else if (eff.type === 'flash') {
-                    flashOpacity += impact;
-                }
+            effects.forEach(fx => {
+                const impact = fx.intensity * bassPower;
+                
+                if (fx.type === 'zoom') scale += impact;
+                if (fx.type === 'rotate') rot += impact * 20; // 20 deg rotation
+                if (fx.type === 'exposure') expo += impact;
             });
 
-            // APPLY TO DOM
-            logo.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rotate}deg)`;
+            // Update DOM
+            logo.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rot}deg)`;
             
-            // Fix Flash limits
-            if (flashOpacity > 1) flashOpacity = 1;
-            if (flashOpacity < 0) flashOpacity = 0;
-            flash.style.opacity = flashOpacity;
+            // Exposure Handling
+            if(expo > 0) {
+                flash.style.background = 'white';
+                flash.style.opacity = Math.min(1, expo);
+            } else if (expo < 0) {
+                flash.style.background = 'black';
+                flash.style.opacity = Math.min(1, Math.abs(expo));
+            } else {
+                flash.style.opacity = 0;
+            }
+        }
+
+        function drawSpectrum(data, count, bassBump) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            // Radius grows with bass
+            const radius = 150 + (bassBump * 30); 
+
+            ctx.beginPath();
+            for(let i=0; i<count; i++) {
+                const val = data[i];
+                const barH = val * 0.8;
+                const rads = (i * 2 * Math.PI) / count;
+                
+                const x = centerX + Math.cos(rads) * (radius + barH);
+                const y = centerY + Math.sin(rads) * (radius + barH);
+                const x0 = centerX + Math.cos(rads) * radius;
+                const y0 = centerY + Math.sin(rads) * radius;
+                
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = 3;
+            ctx.stroke();
         }
 
         // --- 5. UI HELPERS ---
-        window.addEffect = (type) => {
+        function updateThresh(val) {
+            const percent = (val / 255) * 100;
+            document.getElementById('thresh-line').style.left = percent + "%";
+        }
+
+        window.addFx = (type) => {
             const id = Date.now();
-            state.effects.push({ id, type, intensity: 0.5 });
-            renderEffectList();
+            effects.push({ id, type, intensity: 0.5 });
+            renderStack();
         }
 
-        window.removeEffect = (id) => {
-            state.effects = state.effects.filter(e => e.id !== id);
-            renderEffectList();
+        window.removeFx = (id) => {
+            effects = effects.filter(e => e.id !== id);
+            renderStack();
         }
 
-        window.updateEffectIntensity = (id, val) => {
-            const effect = state.effects.find(e => e.id === id);
-            if (effect) effect.intensity = val;
+        window.updateFx = (id, val) => {
+            const fx = effects.find(e => e.id === id);
+            if(fx) fx.intensity = parseFloat(val);
         }
 
-        function renderEffectList() {
-            const container = document.getElementById('effect-list');
-            container.innerHTML = '';
-            state.effects.forEach(eff => {
-                container.innerHTML += `
-                    <div class="effect-row">
-                        <strong>${eff.type.toUpperCase()}</strong> 
-                        <button onclick="removeEffect(${eff.id})" style="width:auto; float:right; padding:2px 5px;">X</button>
-                        <br>
-                        <label>Intensity: ${eff.intensity}</label>
-                        <input type="range" min="-2" max="2" step="0.1" value="${eff.intensity}" 
-                        oninput="updateEffectIntensity(${eff.id}, this.value)">
+        function renderStack() {
+            const con = document.getElementById('stack-container');
+            con.innerHTML = '';
+            effects.forEach(fx => {
+                con.innerHTML += `
+                <div class="effect-item">
+                    <div class="effect-header">
+                        <span>${fx.type.toUpperCase()}</span>
+                        <span class="remove" onclick="removeFx(${fx.id})">×</span>
                     </div>
-                `;
+                    <input type="range" min="-2" max="2" step="0.1" value="${fx.intensity}" 
+                    oninput="updateFx(${fx.id}, this.value)">
+                </div>`;
             });
         }
     </script>
