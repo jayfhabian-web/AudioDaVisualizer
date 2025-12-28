@@ -2,312 +2,304 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V33 - Punch Edition</title>
+    <title>Phonk V34 - Watermark Edition</title>
     <style>
         /* --- THEME --- */
         :root {
             --bg: #000;
-            --panel: rgba(10, 10, 10, 0.95);
+            --panel: rgba(12, 12, 12, 0.95);
             --border: rgba(255, 255, 255, 0.15);
             --text: #ccc;
             --accent: #ff0033;
-            --react-active: #00ff88;
+            --btn-bg: #1a1a1a;
+            --btn-active: #ff0033;
         }
         * { box-sizing: border-box; user-select: none; }
         body { margin: 0; background: var(--bg); font-family: 'Segoe UI', monospace; overflow: hidden; color: var(--text); }
 
-        /* --- 3D WORLD STAGE --- */
-        #scene-viewport {
+        /* --- STAGE (2D) --- */
+        #stage {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            perspective: 1000px; overflow: hidden; z-index: 1;
+            overflow: hidden; z-index: 1; display: flex; justify-content: center; align-items: center;
         }
         
-        #world-pivot {
-            position: absolute; top: 50%; left: 50%;
-            width: 0; height: 0;
-            transform-style: preserve-3d;
-        }
-
-        /* SKYBOX */
-        #skybox-container {
-            position: absolute; top: -1500px; left: -1500px; width: 3000px; height: 3000px;
-            transform: translateZ(-500px);
-            transform-style: preserve-3d; pointer-events: none;
-        }
-        #bg-media-layer {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 100%; height: 100%; object-fit: cover; opacity: 0.6;
-        }
-
-        /* BILLBOARD */
-        #billboard-group {
-            position: absolute; top: 0; left: 0;
-            transform-style: preserve-3d;
-            display: flex; justify-content: center; align-items: center;
-        }
-        #canvas-layer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-        #particle-layer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        /* LAYERS */
+        #bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #bg-img, #bg-video { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; filter: grayscale(100%); }
+        
+        #particle-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
+        #visualizer-layer { position: absolute; z-index: 10; pointer-events: none; }
         
         #logo-container {
-            position: absolute; top: 0; left: 0; transform: translate(-50%, -50%);
-            width: 320px; height: 320px; border-radius: 50%; 
-            background-size: cover; background-position: center;
+            position: absolute; width: 320px; height: 320px; border-radius: 50%; 
+            background-size: cover; background-position: center; z-index: 8;
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
             border: 2px solid rgba(255,255,255,0.05);
         }
 
-        /* OVERLAYS */
-        #overlay-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
+        /* WATERMARK */
+        #watermark-container {
+            position: absolute; z-index: 20; pointer-events: none;
+            display: flex; justify-content: center; align-items: center;
         }
-        #flash-invert-layer { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            pointer-events: none; opacity: 0; background: white; mix-blend-mode: difference;
-        }
-        
-        /* Camcorder UI */
-        #camcorder-ui {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            padding: 40px; display: none; font-family: 'Courier New', monospace;
-            text-shadow: 2px 2px 0 #000; color: #fff; font-weight: bold; font-size: 20px;
-            background: linear-gradient(rgba(0,0,0,0.2), transparent 10%, transparent 90%, rgba(0,0,0,0.2));
-        }
-        .cam-rec { color: red; animation: blink 1s infinite; }
-        .cam-border { position: absolute; border: 2px solid rgba(255,255,255,0.3); width: 50px; height: 50px; }
-        .tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
-        .tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
-        .bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
-        .br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
-        @keyframes blink { 0% { opacity:1; } 50% { opacity:0; } 100% { opacity:1; } }
+        #wm-text { font-family: Impact, sans-serif; text-transform: uppercase; color: rgba(255,255,255,0.5); letter-spacing: 5px; white-space: nowrap; }
+        #wm-img { object-fit: contain; opacity: 0.8; }
 
-        /* VFX Scanlines */
-        #vhs-scanlines {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0;
-            background: repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.2) 3px);
-            pointer-events: none;
-        }
+        /* OVERLAYS */
+        #vfx-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; mix-blend-mode: overlay; }
+        #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 31; pointer-events: none; opacity: 0; background: white; mix-blend-mode: difference; }
 
         /* --- UI PANEL --- */
         #ui-panel {
             position: absolute; top: 0; left: 0; width: 440px; height: 100vh;
             background: var(--panel); border-right: 1px solid var(--border);
             padding: 15px; z-index: 50; overflow-y: auto;
-            transition: transform 0.2s ease; backdrop-filter: blur(10px);
+            backdrop-filter: blur(15px);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         #ui-panel.hidden { transform: translateX(-100%); }
 
-        /* Components */
+        /* General UI */
         h2 { font-size: 14px; color: #fff; margin: 0 0 15px 0; border-left: 3px solid var(--accent); padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 10px; color: #666; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
         .control-group { margin-bottom: 12px; }
         label { display: flex; justify-content: space-between; font-size: 9px; color: #888; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
-        select, input[type="file"] { width: 100%; background: #111; border: 1px solid #222; color: #ccc; padding: 6px; font-size: 10px; text-transform: uppercase; border-radius: 4px; }
-        input[type="range"] { width: 100%; height: 4px; background: #222; border-radius: 2px; appearance: none; cursor: pointer; }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.5); }
+        select, input[type="text"], input[type="file"] { width: 100%; background: #0a0a0a; border: 1px solid #333; color: #ccc; padding: 6px; font-size: 10px; text-transform: uppercase; border-radius: 4px; outline: none; }
         
-        /* VFX Row */
-        .vfx-row { display: flex; align-items: center; background: #0a0a0a; border: 1px solid #222; padding: 8px; margin-bottom: 5px; border-radius: 4px; gap: 8px; }
-        .vfx-name { width: 70px; font-size: 9px; font-weight: bold; color: #ccc; }
-        .vfx-slider { flex: 1; }
-        .vfx-switch { position: relative; width: 30px; height: 16px; background: #333; border-radius: 10px; cursor: pointer; }
-        .vfx-switch.active { background: var(--react-active); }
-        .vfx-switch::after { content:''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; background: #fff; border-radius: 50%; transition: left 0.1s; }
-        .vfx-switch.active::after { left: 16px; background: #000; }
-        .vfx-select { width: 60px; font-size: 8px; height: 20px; padding: 0; background: #151515; border-color: #333; }
+        /* Buttons */
+        button.action-btn { width: 100%; padding: 8px; background: var(--btn-bg); border: 1px solid #333; color: #ccc; cursor: pointer; font-size: 9px; font-weight: bold; transition: 0.2s; }
+        button.action-btn:hover { background: #333; color: #fff; }
+        button.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Sliders */
+        input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; background: #222; border-radius: 2px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; cursor: pointer; border: 2px solid #000; }
+
+        /* --- ARCHITECT GRID (Gain & Punch) --- */
+        .sculptor-grid { display: flex; gap: 4px; height: 240px; margin-bottom: 10px; }
+        .sculpt-col { flex: 1; background: #080808; border: 1px solid #222; position: relative; display: flex; flex-direction: column; }
+        .graph-area { flex: 1; position: relative; border-bottom: 1px solid #333; cursor: row-resize; overflow: hidden; background: rgba(255,255,255,0.02); }
+        .audio-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #555; opacity: 0.8; transition: height 0.05s; }
+        .thresh-line { position: absolute; left: 0; width: 100%; height: 2px; background: #fff; box-shadow: 0 0 8px #fff; pointer-events: none; }
         
-        /* Grid with G/P Sliders */
-        .sculptor-grid { display: flex; gap: 4px; height: 220px; margin-bottom: 10px; }
-        .sculpt-col { flex: 1; background: #111; border: 1px solid #222; position: relative; display: flex; flex-direction: column; }
-        .graph-area { flex: 1; position: relative; border-bottom: 1px solid #333; cursor: row-resize; overflow: hidden; background: rgba(0,0,0,0.3); }
-        .audio-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #444; opacity: 0.8; transition: height 0.05s; }
-        .thresh-line { position: absolute; left: 0; width: 100%; height: 2px; background: #fff; box-shadow: 0 0 5px #fff; pointer-events: none; }
+        .col-controls { height: 100px; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; background: #050505; }
+        .edit-btn { width: 100%; font-size: 8px; padding: 4px; background: #181818; border: 1px solid #333; color: #888; cursor: pointer; margin-bottom: 4px; }
+        .edit-btn:hover { color: #fff; border-color: #555; }
         
-        /* New Controls Area */
-        .col-controls { height: 90px; background: #080808; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; }
-        .edit-btn { width: 100%; font-size: 8px; padding: 2px; background: #222; border: 1px solid #333; color: #888; cursor: pointer; margin-bottom: 4px; }
-        .sliders-row { display: flex; justify-content: space-around; height: 60px; }
+        /* Vertical Sliders (Gain/Punch) */
+        .sliders-row { display: flex; justify-content: space-around; height: 65px; }
         .v-slider-group { display: flex; flex-direction: column; align-items: center; width: 45%; }
         .v-slider-label { font-size: 8px; color: #666; margin-bottom: 2px; font-weight: bold; }
         input[type=range].v-slider { 
-            -webkit-appearance: none; width: 50px; height: 4px; 
-            transform: rotate(-90deg) translate(-20px, 0); margin: 25px 0; background: #333; cursor: pointer; 
+            -webkit-appearance: none; width: 55px; height: 4px; 
+            transform: rotate(-90deg) translate(-25px, 0); margin: 30px 0; background: #333; cursor: pointer; 
         }
+        
+        /* --- VFX ROW --- */
+        .vfx-row { display: flex; align-items: center; background: #0e0e0e; border: 1px solid #222; padding: 6px; margin-bottom: 6px; border-radius: 4px; gap: 6px; }
+        .vfx-name { width: 60px; font-size: 9px; font-weight: bold; color: #bbb; }
+        .vfx-slider { flex: 1; }
+        
+        /* Invert Toggle & Link */
+        .vfx-inv { 
+            font-size: 8px; padding: 2px 4px; cursor: pointer; background: #222; color: #666; border: 1px solid #333; border-radius: 3px; 
+        }
+        .vfx-inv.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .vfx-select { width: 55px; font-size: 8px; height: 18px; padding: 0; background: #151515; border-color: #333; }
 
-        /* Toggle Button */
+        /* --- WATERMARK CONTROLS --- */
+        .wm-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+
+        /* --- TWEAK MODAL (Restored & Polished) --- */
+        #tweak-modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); z-index: 100; 
+            display: none; align-items: center; justify-content: center; 
+            backdrop-filter: blur(8px); 
+        }
+        #tweak-modal.active { display: flex; animation: fadeIn 0.2s ease-out; }
+        
+        .tweak-box { 
+            width: 320px; background: #080808; border: 1px solid #333; 
+            padding: 20px; border-radius: 6px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+            border-top: 2px solid var(--accent);
+        }
+        .tweak-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        .tweak-header h2 { margin: 0; border: none; padding: 0; font-size: 14px; color: #fff; }
+        .close-btn { background: none; border: none; color: #666; font-size: 14px; cursor: pointer; }
+        .close-btn:hover { color: #fff; }
+        
+        @keyframes fadeIn { from { opacity:0; transform: scale(0.95); } to { opacity:1; transform: scale(1); } }
+
+        /* Toggle UI Button */
         #toggle-ui { position: absolute; top: 15px; left: 460px; z-index: 60; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; }
         #ui-panel.hidden + #toggle-ui { left: 15px; }
         .hidden { display: none !important; }
-
-        /* Tweak Modal */
-        #tweak-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        #tweak-modal.active { display: flex; }
-        .tweak-box { width: 400px; background: #050505; border: 1px solid #333; padding: 20px; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
 
     </style>
 </head>
 <body>
 
-    <div id="scene-viewport">
-        <div id="world-pivot">
-            <div id="skybox-container">
-                <img id="bg-img" src="" style="display:none; width:100%; height:100%; object-fit:cover;">
-                <video id="bg-video" loop muted playsinline style="display:none; width:100%; height:100%; object-fit:cover;"></video>
-                <div id="bg-default" style="width:100%; height:100%; background: radial-gradient(circle, #222 0%, #000 100%);"></div>
-            </div>
-
-            <div id="billboard-group">
-                <canvas id="particle-layer"></canvas>
-                <canvas id="canvas-layer"></canvas>
-                <div id="logo-container"></div>
-            </div>
+    <div id="stage">
+        <div id="bg-layer">
+            <div id="bg-default" style="width:100%; height:100%; background: radial-gradient(circle, #222 0%, #000 100%);"></div>
+            <img id="bg-img" src="" style="display:none;">
+            <video id="bg-video" loop muted playsinline style="display:none;"></video>
         </div>
-    </div>
 
-    <div id="overlay-container">
-        <div id="flash-invert-layer"></div>
-        <div id="vhs-scanlines"></div>
-        
-        <div id="camcorder-ui">
-            <div class="cam-border tl"></div><div class="cam-border tr"></div>
-            <div class="cam-border bl"></div><div class="cam-border br"></div>
-            <div style="position:absolute; top:30px; left:40px;">PLAY <span style="font-size:12px;">SP</span></div>
-            <div style="position:absolute; top:30px; right:40px;" class="cam-rec">● REC</div>
-            <div style="position:absolute; bottom:30px; left:40px;" id="time-code">00:00:00</div>
-            <div style="position:absolute; bottom:30px; right:40px;">BATTERY [|||]</div>
+        <div id="watermark-container">
+            <span id="wm-text" style="font-size: 40px; display:none;">YOUR TEXT</span>
+            <img id="wm-img" src="" style="display:none; max-width: 200px;">
         </div>
+
+        <canvas id="particle-layer"></canvas>
+        <canvas id="visualizer-layer"></canvas>
+        <div id="logo-container"></div>
+
+        <div id="vfx-overlay"></div>
+        <div id="flash-layer"></div>
     </div>
 
     <button id="toggle-ui" onclick="toggleUI()">OPEN ENGINE</button>
 
     <div id="ui-panel">
-        <h2>Phonk V33 <span style="font-size:9px; opacity:0.5">PUNCH</span></h2>
+        <h2>Phonk V34 <span style="font-size:9px; opacity:0.5">WATERMARK</span></h2>
 
         <div class="control-group">
-            <label>Audio Track</label>
+            <label>Audio</label>
             <input type="file" id="file-audio" accept="audio/*">
-            <button id="play-btn" onclick="togglePlay()" disabled style="width:100%; margin-top:5px; padding:5px; background:#222; border:1px solid #333; color:#888;">LOAD AUDIO FIRST</button>
+            <button class="action-btn" id="play-btn" onclick="togglePlay()" disabled style="margin-top:5px;">LOAD AUDIO FIRST</button>
         </div>
         <div class="control-group">
-            <label>Logo / BG</label>
-            <input type="file" id="file-logo" accept="image/*" title="Logo">
-            <input type="file" id="file-bg" accept="image/*,video/*" style="margin-top:2px;" title="Background">
+            <label>Visual Assets</label>
+            <input type="file" id="file-logo" accept="image/*" title="Center Logo" style="margin-bottom:2px;">
+            <input type="file" id="file-bg" accept="image/*,video/*" title="Background">
         </div>
 
         <h3>Frequency Architect</h3>
-        <p style="font-size:9px; color:#666; margin-bottom:5px;">G = Gain (Volume) | P = Punch (Stretch)</p>
+        <p style="font-size:9px; color:#666; margin-bottom:5px;">G = Gain (Vol) | P = Punch (Peak Stretch)</p>
         
         <div class="sculptor-grid">
-            <div class="sculpt-col">
-                <div class="graph-area" id="g-0" onmousedown="startDrag(0, event)"><div class="audio-bar" id="b-0"></div><div class="thresh-line" id="l-0" style="bottom:80%"></div></div>
-                <div class="col-controls">
-                    <button class="edit-btn" onclick="openTweak(0)">DSP</button>
-                    <div class="sliders-row">
-                        <div class="v-slider-group"><div class="v-slider-label">G</div><input type="range" class="v-slider" id="gain-0" min="0.1" max="3" step="0.1" value="1.0"></div>
-                        <div class="v-slider-group"><div class="v-slider-label" style="color:var(--accent)">P</div><input type="range" class="v-slider" id="punch-0" min="1" max="5" step="0.1" value="1.0"></div>
+            <script>
+                // Generating HTML for 4 bands to keep code clean
+                for(let i=0; i<4; i++){
+                    document.write(`
+                    <div class="sculpt-col">
+                        <div class="graph-area" id="g-${i}" onmousedown="startDrag(${i}, event)">
+                            <div class="audio-bar" id="b-${i}"></div>
+                            <div class="thresh-line" id="l-${i}" style="bottom:${[80,60,65,85][i]}%"></div>
+                        </div>
+                        <div class="col-controls">
+                            <button class="edit-btn" onclick="openTweak(${i})">EDIT DSP</button>
+                            <div class="sliders-row">
+                                <div class="v-slider-group"><div class="v-slider-label">G</div><input type="range" class="v-slider" id="gain-${i}" min="0.1" max="3" step="0.1" value="1.0"></div>
+                                <div class="v-slider-group"><div class="v-slider-label" style="color:var(--accent)">P</div><input type="range" class="v-slider" id="punch-${i}" min="1" max="5" step="0.1" value="1.0"></div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="sculpt-col">
-                <div class="graph-area" id="g-1" onmousedown="startDrag(1, event)"><div class="audio-bar" id="b-1"></div><div class="thresh-line" id="l-1" style="bottom:60%"></div></div>
-                <div class="col-controls">
-                    <button class="edit-btn" onclick="openTweak(1)">DSP</button>
-                    <div class="sliders-row">
-                        <div class="v-slider-group"><div class="v-slider-label">G</div><input type="range" class="v-slider" id="gain-1" min="0.1" max="3" step="0.1" value="1.0"></div>
-                        <div class="v-slider-group"><div class="v-slider-label" style="color:var(--accent)">P</div><input type="range" class="v-slider" id="punch-1" min="1" max="5" step="0.1" value="1.0"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="sculpt-col">
-                <div class="graph-area" id="g-2" onmousedown="startDrag(2, event)"><div class="audio-bar" id="b-2"></div><div class="thresh-line" id="l-2" style="bottom:65%"></div></div>
-                <div class="col-controls">
-                    <button class="edit-btn" onclick="openTweak(2)">DSP</button>
-                    <div class="sliders-row">
-                        <div class="v-slider-group"><div class="v-slider-label">G</div><input type="range" class="v-slider" id="gain-2" min="0.1" max="3" step="0.1" value="1.0"></div>
-                        <div class="v-slider-group"><div class="v-slider-label" style="color:var(--accent)">P</div><input type="range" class="v-slider" id="punch-2" min="1" max="5" step="0.1" value="1.0"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="sculpt-col">
-                <div class="graph-area" id="g-3" onmousedown="startDrag(3, event)"><div class="audio-bar" id="b-3"></div><div class="thresh-line" id="l-3" style="bottom:85%"></div></div>
-                <div class="col-controls">
-                    <button class="edit-btn" onclick="openTweak(3)">DSP</button>
-                    <div class="sliders-row">
-                        <div class="v-slider-group"><div class="v-slider-label">G</div><input type="range" class="v-slider" id="gain-3" min="0.1" max="3" step="0.1" value="1.0"></div>
-                        <div class="v-slider-group"><div class="v-slider-label" style="color:var(--accent)">P</div><input type="range" class="v-slider" id="punch-3" min="1" max="5" step="0.1" value="1.0"></div>
-                    </div>
-                </div>
-            </div>
+                    `);
+                }
+            </script>
         </div>
-
-        <div class="control-group"><label>Master Pre-Amp</label><input type="range" id="pre-amp" min="0.5" max="3" step="0.1" value="1.0"></div>
+        <div class="control-group"><label>Pre-Amp</label><input type="range" id="pre-amp" min="0.5" max="3" step="0.1" value="1.0"></div>
 
         <h3>VFX Rack</h3>
         
         <div class="vfx-row">
-            <div class="vfx-name" style="color:white">Flash Invert</div>
-            <div class="vfx-switch" id="sw-invert" onclick="toggleSwitch('invert')"></div>
-            <div style="flex:1"></div>
-            <select class="vfx-select" id="link-invert"><option value="-1">Global</option><option value="0">20Hz</option><option value="1">40Hz</option><option value="2">60Hz</option><option value="3">80Hz</option></select>
-        </div>
-
-        <div class="vfx-row">
             <div class="vfx-name" style="color:var(--accent)">Deep Fry</div>
             <input type="range" class="vfx-slider" id="vfx-fry-amt" min="0" max="1" step="0.1" value="0.0">
-            <select class="vfx-select" id="vfx-fry-link"><option value="-1">Global</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
+            <div class="vfx-inv" id="inv-fry" onclick="toggleInv('fry')">INV</div>
+            <select class="vfx-select" id="link-fry"><option value="-1">Glob</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
         </div>
 
         <div class="vfx-row">
             <div class="vfx-name">RGB Split</div>
             <input type="range" class="vfx-slider" id="vfx-rgb-amt" min="0" max="1" step="0.1" value="0.3">
-            <select class="vfx-select" id="vfx-rgb-link"><option value="-1">Global</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
+            <div class="vfx-inv" id="inv-rgb" onclick="toggleInv('rgb')">INV</div>
+            <select class="vfx-select" id="link-rgb"><option value="-1">Glob</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
         </div>
 
         <div class="vfx-row">
             <div class="vfx-name">Particles</div>
             <input type="range" class="vfx-slider" id="vfx-part-amt" min="0" max="1" step="0.1" value="0.5">
-            <select class="vfx-select" id="vfx-part-link"><option value="0">20Hz</option><option value="1">40Hz</option><option value="-1">Global</option></select>
+            <div class="vfx-inv" id="inv-part" onclick="toggleInv('part')">INV</div>
+            <select class="vfx-select" id="link-part"><option value="0">20Hz</option><option value="1">40Hz</option><option value="-1">Glob</option></select>
         </div>
 
-        <h3>World Settings</h3>
-        <div class="control-group"><label>Orbit Speed</label><input type="range" id="orbit-speed" min="0" max="2" step="0.1" value="0.5"></div>
-        <div class="control-group"><label>Bloom</label><input type="range" id="vfx-bloom" min="0" max="50" step="5" value="20"></div>
-        <div style="display:flex; gap:10px; margin-top:5px;">
-            <input type="checkbox" id="check-cam" onchange="toggleCam()"> <span style="font-size:10px;">Camcorder</span>
-            <input type="checkbox" id="check-vhs"> <span style="font-size:10px;">VHS Noise</span>
+        <h3>Watermark System</h3>
+        <div class="control-group">
+            <label>Type</label>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="wm-text-input" placeholder="ENTER TEXT..." oninput="updateWM()">
+                <input type="file" id="wm-file" accept="image/*" style="width:80px;" title="Img">
+            </div>
         </div>
+        <div class="wm-controls">
+            <div>
+                <label>Mode</label>
+                <select id="wm-mode">
+                    <option value="static">Static</option>
+                    <option value="pulse">Pulse (Beat)</option>
+                    <option value="bounce">DVD Bounce</option>
+                    <option value="both">Bounce + Pulse</option>
+                </select>
+            </div>
+            <div>
+                <label>Opacity</label>
+                <input type="range" id="wm-opacity" min="0" max="1" step="0.1" value="0.8" oninput="updateWM()">
+            </div>
+        </div>
+
+        <div style="height:50px;"></div>
     </div>
 
     <div id="tweak-modal">
         <div class="tweak-box">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <h2 style="border:none; margin:0;">Tweak <span id="tweak-title" style="color:var(--accent)"></span></h2>
-                <button onclick="closeTweak()" style="background:none; border:none; color:#555; cursor:pointer;">X</button>
+            <div class="tweak-header">
+                <h2>DSP EDITOR: <span id="tweak-title" style="color:var(--accent)"></span></h2>
+                <button class="close-btn" onclick="closeTweak()">✕</button>
             </div>
-            <div class="control-group"><label>Attack</label><input type="range" id="inp-atk" min="0" max="0.9" step="0.05"></div>
-            <div class="control-group"><label>Decay</label><input type="range" id="inp-dec" min="0.01" max="0.5" step="0.01"></div>
-            <div class="control-group"><label>Gate</label><input type="range" id="inp-gate" min="0" max="0.4" step="0.01"></div>
+            
+            <div class="control-group">
+                <label>Attack (Response Speed)</label>
+                <input type="range" id="inp-atk" min="0" max="0.9" step="0.05">
+            </div>
+            <div class="control-group">
+                <label>Decay (Fade Out Speed)</label>
+                <input type="range" id="inp-dec" min="0.01" max="0.5" step="0.01">
+            </div>
+            <div class="control-group">
+                <label>Noise Gate (Sensitivity)</label>
+                <input type="range" id="inp-gate" min="0" max="0.4" step="0.01">
+            </div>
+            <button class="action-btn" onclick="closeTweak()" style="margin-top:15px; background:var(--accent); color:white; border:none;">DONE</button>
         </div>
     </div>
 
     <script>
         const dom = {
             playBtn: document.getElementById('play-btn'),
-            canvas: document.getElementById('canvas-layer'),
-            ctx: document.getElementById('canvas-layer').getContext('2d'),
+            canvas: document.getElementById('visualizer-layer'),
+            ctx: document.getElementById('visualizer-layer').getContext('2d'),
             pCanvas: document.getElementById('particle-layer'),
             pCtx: document.getElementById('particle-layer').getContext('2d'),
             logo: document.getElementById('logo-container'),
-            pivot: document.getElementById('world-pivot'),
-            billboard: document.getElementById('billboard-group'),
+            stage: document.getElementById('stage'),
             // Overlays
-            invertLayer: document.getElementById('flash-invert-layer'),
-            vhsLayer: document.getElementById('vhs-scanlines'),
-            camLayer: document.getElementById('camcorder-ui'),
-            scene: document.getElementById('scene-viewport'),
-            // BG
+            flash: document.getElementById('flash-layer'),
+            vfxOver: document.getElementById('vfx-overlay'),
+            // Background
             bgImg: document.getElementById('bg-img'),
             bgVid: document.getElementById('bg-video'),
             bgDef: document.getElementById('bg-default'),
+            // Watermark
+            wmCont: document.getElementById('watermark-container'),
+            wmText: document.getElementById('wm-text'),
+            wmImg: document.getElementById('wm-img'),
+            wmInput: document.getElementById('wm-text-input'),
+            wmMode: document.getElementById('wm-mode'),
+            wmOp: document.getElementById('wm-opacity'),
             // Controls
             bars: [0,1,2,3].map(i => document.getElementById(`b-${i}`)),
             lines: [0,1,2,3].map(i => document.getElementById(`l-${i}`)),
@@ -315,12 +307,9 @@
             punches: [0,1,2,3].map(i => document.getElementById(`punch-${i}`)),
             inputs: {
                 preAmp: document.getElementById('pre-amp'),
-                fryAmt: document.getElementById('vfx-fry-amt'), fryLink: document.getElementById('vfx-fry-link'),
-                rgbAmt: document.getElementById('vfx-rgb-amt'), rgbLink: document.getElementById('vfx-rgb-link'),
-                partAmt: document.getElementById('vfx-part-amt'), partLink: document.getElementById('vfx-part-link'),
-                invSwitch: document.getElementById('sw-invert'), invLink: document.getElementById('link-invert'),
-                bloom: document.getElementById('vfx-bloom'), orbit: document.getElementById('orbit-speed'),
-                vhs: document.getElementById('check-vhs'), cam: document.getElementById('check-cam')
+                fryAmt: document.getElementById('vfx-fry-amt'), fryLink: document.getElementById('link-fry'),
+                rgbAmt: document.getElementById('vfx-rgb-amt'), rgbLink: document.getElementById('link-rgb'),
+                partAmt: document.getElementById('vfx-part-amt'), partLink: document.getElementById('link-part')
             },
             // Tweak
             tweakModal: document.getElementById('tweak-modal'),
@@ -328,24 +317,30 @@
             tweakInputs: { atk: document.getElementById('inp-atk'), dec: document.getElementById('inp-dec'), gate: document.getElementById('inp-gate') }
         };
 
-        function resize() { dom.canvas.width = 1000; dom.canvas.height = 1000; dom.pCanvas.width = 1000; dom.pCanvas.height = 1000; }
+        // Resize
+        function resize() {
+            dom.canvas.width = window.innerWidth; dom.canvas.height = window.innerHeight;
+            dom.pCanvas.width = window.innerWidth; dom.pCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
         resize();
 
+        // State
         const state = {
             isPlaying: false,
-            cameraAngle: 0,
             physics: 0,
-            invertActive: false,
-            bands: [0,1,2,3].map(() => ({ val:0, thresh:0.6, atk:0, dec:0.15, gate:0.05 })),
+            inverts: { fry: false, rgb: false, part: false },
+            bands: [0,1,2,3].map((_,i) => ({ val:0, thresh:[0.8,0.6,0.65,0.85][i], atk:0, dec:0.15, gate:0.05 })),
             currentTweak: -1,
-            particles: []
+            particles: [],
+            wm: { x: window.innerWidth/2, y: window.innerHeight/4, dx: 3, dy: 3 } // Watermark physics
         };
 
         // --- PARTICLE SYSTEM ---
         class Particle {
             constructor() {
-                this.x = 500; this.y = 500;
-                const a = Math.random() * Math.PI * 2; const s = Math.random() * 15 + 5;
+                this.x = window.innerWidth/2; this.y = window.innerHeight/2;
+                const a = Math.random()*Math.PI*2; const s = Math.random()*15+5;
                 this.vx = Math.cos(a)*s; this.vy = Math.sin(a)*s;
                 this.life = 1.0; this.size = Math.random()*5+2;
             }
@@ -400,16 +395,15 @@
                 else dsp.val -= dsp.dec;
                 if(dsp.val < 0) dsp.val = 0;
 
-                // VISUAL BAR HEIGHT logic
-                // If value exceeds threshold, multiply the excess by PUNCH
+                // Punch Logic
                 let visualVal = dsp.val;
                 if (dsp.val > dsp.thresh) {
                     let excess = dsp.val - dsp.thresh;
-                    visualVal = dsp.thresh + (excess * punch); // Punch acts as expansion
+                    visualVal = dsp.thresh + (excess * punch);
                 }
                 
                 dom.bars[i].style.height = Math.min(visualVal * 100, 100) + "%";
-                dom.bars[i].style.background = (dsp.val > dsp.thresh) ? 'var(--accent)' : '#444';
+                dom.bars[i].style.background = (dsp.val > dsp.thresh) ? 'var(--accent)' : '#555';
 
                 if(dsp.val > dsp.thresh) {
                     let f = (dsp.val - dsp.thresh) * 2;
@@ -419,22 +413,26 @@
             });
 
             state.physics += (globalTrig - state.physics) * 0.2;
-            state.cameraAngle += parseFloat(dom.inputs.orbit.value) * 0.5;
-            dom.pivot.style.transform = `translate(-50%,-50%) rotateY(${state.cameraAngle}deg)`;
-            dom.billboard.style.transform = `rotateY(${-state.cameraAngle}deg)`;
-
-            drawCanvas(data, state.physics);
+            
+            drawVisuals(data, state.physics);
+            updateWatermark(state.physics);
             applyVFX(triggers, state.physics);
         }
 
-        function drawCanvas(data, phys) {
-            const ctx = dom.ctx; ctx.clearRect(0,0,1000,1000);
-            const cx=500, cy=500;
-            const bloom = parseInt(dom.inputs.bloom.value);
-            if(bloom>0) { ctx.shadowBlur=bloom; ctx.shadowColor="#ff0033"; } else ctx.shadowBlur=0;
+        // --- DRAWING ---
+        function drawVisuals(data, phys) {
+            const ctx = dom.ctx; 
+            const cx = dom.canvas.width/2; 
+            const cy = dom.canvas.height/2;
+            ctx.clearRect(0,0,dom.canvas.width,dom.canvas.height);
             
-            const bars = 60; const rad = 250 + (phys*40);
+            // Draw Bars Circle
+            const bars = 60; const rad = 180 + (phys*30);
             const pre = parseFloat(dom.inputs.preAmp.value);
+            
+            // Bloom logic (simulated in canvas for performance)
+            if(phys > 0.2) { ctx.shadowBlur = 20; ctx.shadowColor = "#ff0033"; } 
+            else { ctx.shadowBlur = 0; }
 
             for(let i=0; i<bars; i++) {
                 let val = (data[i*2]/255) * pre;
@@ -442,15 +440,16 @@
                 if(phys>0.1) h *= (1+phys);
                 ctx.save(); ctx.translate(cx,cy); ctx.rotate((Math.PI*2/bars)*i);
                 ctx.fillStyle = (phys>0.2) ? "#ff0033" : "#fff";
-                ctx.fillRect(rad, -10, Math.max(h,5), 20);
+                ctx.fillRect(rad, -8, Math.max(h,5), 16);
                 ctx.restore();
             }
 
             // Particles
-            const pCtx = dom.pCtx; pCtx.clearRect(0,0,1000,1000);
-            const pLink = parseInt(dom.inputs.partLink.value);
-            let pTrig = (pLink===-1) ? phys : (state.bands[pLink].val > state.bands[pLink].thresh ? 1 : 0);
-            if(pTrig>0.1 && Math.random()<parseFloat(dom.inputs.partAmt.value)) 
+            const pCtx = dom.pCtx; pCtx.clearRect(0,0,dom.canvas.width,dom.canvas.height);
+            const pLink = parseInt(dom.inputs.inputs.partLink.value);
+            let pForce = getLinkValue(pLink, [0,0,0,0], phys, state.inverts.part); // Simplified trigger check
+            
+            if(pForce > 0.1 && Math.random()<parseFloat(dom.inputs.inputs.partAmt.value)) 
                 for(let k=0;k<5;k++) state.particles.push(new Particle());
             
             for(let i=state.particles.length-1; i>=0; i--) {
@@ -459,43 +458,120 @@
             }
         }
 
-        function applyVFX(trigs, phys) {
-            const getF = (id) => (parseInt(id)===-1) ? phys : (trigs[parseInt(id)]||0);
+        // --- WATERMARK PHYSICS ---
+        function updateWatermark(phys) {
+            const wm = dom.wmCont;
+            const mode = dom.wmMode.value;
+            const rect = wm.getBoundingClientRect();
+            
+            // Base Position
+            let tx = 0, ty = 0;
+            let scale = 1;
 
-            // Invert (Switch)
-            if(state.invertActive) {
-                const f = getF(dom.inputs.invLink.value);
-                dom.invertLayer.style.opacity = (f > 0.1) ? 1 : 0;
-            } else dom.invertLayer.style.opacity = 0;
+            if(mode === 'bounce' || mode === 'both') {
+                // DVD Logic
+                state.wm.x += state.wm.dx;
+                state.wm.y += state.wm.dy;
 
-            // Deep Fry
-            const fryAmt = parseFloat(dom.inputs.fryAmt.value);
-            const fryF = getF(dom.inputs.fryLink.value);
-            let filter = "";
-            if(fryAmt>0 && fryF>0.1) {
-                const v = 100 + (fryF*fryAmt*300);
-                filter += `contrast(${v}%) saturate(${v}%) `;
+                // Boundary check
+                if(state.wm.x <= 0 || state.wm.x + rect.width >= window.innerWidth) state.wm.dx *= -1;
+                if(state.wm.y <= 0 || state.wm.y + rect.height >= window.innerHeight) state.wm.dy *= -1;
+
+                wm.style.left = state.wm.x + 'px';
+                wm.style.top = state.wm.y + 'px';
+                wm.style.transform = 'none'; // Clear center align
+            } else {
+                // Static Center
+                wm.style.left = '50%'; wm.style.top = '20%'; 
+                wm.style.transform = 'translate(-50%, -50%)';
             }
-            dom.scene.style.filter = filter;
 
-            // RGB
-            const rgbAmt = parseFloat(dom.inputs.rgbAmt.value);
-            const rgbF = getF(dom.inputs.rgbLink.value);
-            if(rgbAmt>0 && rgbF>0.1) {
-                const s = rgbF*rgbAmt*20;
-                dom.billboard.style.textShadow = `${s}px 0 red, -${s}px 0 blue`;
-            } else dom.billboard.style.textShadow = 'none';
+            if(mode === 'pulse' || mode === 'both') {
+                scale = 1 + (phys * 0.5); // Pulse on beat
+            }
 
-            dom.vhsLayer.style.opacity = dom.inputs.vhs.checked ? 0.3 : 0;
+            // Apply Scale
+            if(mode === 'bounce' || mode === 'both') {
+                wm.style.transform = `scale(${scale})`;
+            } else {
+                wm.style.transform = `translate(-50%, -50%) scale(${scale})`;
+            }
         }
 
-        // --- EVENTS ---
-        window.toggleSwitch = (id) => {
-            if(id==='invert') { 
-                state.invertActive = !state.invertActive; 
-                dom.inputs.invSwitch.classList.toggle('active'); 
+        // --- VFX CONTROLLER ---
+        function getLinkValue(indexStr, trigs, phys, invert) {
+            let val = 0;
+            const idx = parseInt(indexStr);
+            if(idx === -1) val = phys;
+            else val = trigs[idx] || 0;
+
+            if(invert) return (1.0 - val); // Invert Logic
+            return val;
+        }
+
+        function applyVFX(trigs, phys) {
+            // Deep Fry
+            const fAmt = parseFloat(dom.inputs.inputs.fryAmt.value);
+            const fVal = getLinkValue(dom.inputs.inputs.fryLink.value, trigs, phys, state.inverts.fry);
+            let filter = "grayscale(100%) "; // Base look
+            if(fAmt>0 && fVal > 0.1) {
+                const v = 100 + (fVal*fAmt*400);
+                filter += `contrast(${v}%) saturate(${v}%)`;
             }
+            dom.stage.style.filter = filter;
+
+            // RGB Split
+            const rAmt = parseFloat(dom.inputs.inputs.rgbAmt.value);
+            const rVal = getLinkValue(dom.inputs.inputs.rgbLink.value, trigs, phys, state.inverts.rgb);
+            if(rAmt > 0) {
+                const s = rVal * rAmt * 30;
+                dom.stage.style.textShadow = `${s}px 0 red, -${s}px 0 blue`; // Glitches text/wm
+                dom.canvas.style.transform = `translate(${s}px, 0)`; // Shake visualizer
+            } else {
+                dom.canvas.style.transform = `none`;
+                dom.stage.style.textShadow = 'none';
+            }
+        }
+
+        // --- UI LOGIC ---
+        window.toggleInv = (key) => {
+            state.inverts[key] = !state.inverts[key];
+            document.getElementById(`inv-${key}`).classList.toggle('active');
         };
+
+        window.updateWM = () => {
+            const txt = dom.wmInput.value;
+            const op = dom.wmOp.value;
+            if(txt) { 
+                dom.wmText.innerText = txt; dom.wmText.style.display = 'block'; dom.wmImg.style.display='none'; 
+            } else { dom.wmText.style.display='none'; }
+            dom.wmCont.style.opacity = op;
+        };
+        
+        document.getElementById('wm-file').addEventListener('change', e=>{
+            const u = URL.createObjectURL(e.target.files[0]);
+            dom.wmImg.src=u; dom.wmImg.style.display='block'; dom.wmText.style.display='none'; dom.wmInput.value="";
+        });
+
+        // Tweak Modal Logic
+        window.openTweak = (i) => {
+            state.currentTweak = i; dom.tweakTitle.innerText=`${i*20+20}Hz`;
+            const b = state.bands[i];
+            dom.tweakInputs.atk.value=b.atk; dom.tweakInputs.dec.value=b.dec; dom.tweakInputs.gate.value=b.gate;
+            dom.tweakModal.classList.add('active');
+        };
+        window.closeTweak = () => dom.tweakModal.classList.remove('active');
+        ['atk','dec','gate'].forEach(k=>dom.tweakInputs[k].addEventListener('input',e=>state.bands[state.currentTweak][k]=parseFloat(e.target.value)));
+
+        // File Handlers
+        document.getElementById('file-logo').addEventListener('change', e=>{ dom.logo.style.backgroundImage=`url(${URL.createObjectURL(e.target.files[0])})`; });
+        document.getElementById('file-bg').addEventListener('change', e=>{
+            const f=e.target.files[0]; const u=URL.createObjectURL(f);
+            if(f.type.startsWith('video')) { dom.bgVid.src=u; dom.bgVid.style.display='block'; dom.bgVid.play(); dom.bgImg.style.display='none'; dom.bgDef.style.display='none'; }
+            else { dom.bgImg.src=u; dom.bgImg.style.display='block'; dom.bgVid.style.display='none'; dom.bgDef.style.display='none'; }
+        });
+        
+        // Drag Threshold
         window.startDrag = (id, e) => {
             const up = () => { document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); };
             const mv = (ev) => {
@@ -506,23 +582,8 @@
             };
             document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); mv(e);
         };
-        window.openTweak = (i) => {
-            state.currentTweak = i; dom.tweakTitle.innerText=`${i*20+20}Hz`;
-            const b = state.bands[i];
-            dom.tweakInputs.atk.value=b.atk; dom.tweakInputs.dec.value=b.dec; dom.tweakInputs.gate.value=b.gate;
-            dom.tweakModal.classList.add('active');
-        };
-        window.closeTweak = () => dom.tweakModal.classList.remove('active');
-        ['atk','dec','gate'].forEach(k=>dom.tweakInputs[k].addEventListener('input',e=>state.bands[state.currentTweak][k]=parseFloat(e.target.value)));
-        
-        document.getElementById('file-logo').addEventListener('change', e=>{ dom.logo.style.backgroundImage=`url(${URL.createObjectURL(e.target.files[0])})`; });
-        document.getElementById('file-bg').addEventListener('change', e=>{
-            const f=e.target.files[0]; const u=URL.createObjectURL(f);
-            if(f.type.startsWith('video')) { dom.bgVid.src=u; dom.bgVid.style.display='block'; dom.bgVid.play(); dom.bgImg.style.display='none'; dom.bgDef.style.display='none'; }
-            else { dom.bgImg.src=u; dom.bgImg.style.display='block'; dom.bgVid.style.display='none'; dom.bgDef.style.display='none'; }
-        });
+
         window.toggleUI = () => document.getElementById('ui-panel').classList.toggle('hidden');
-        window.toggleCam = () => dom.camLayer.style.display = dom.inputs.cam.checked ? 'block' : 'none';
     </script>
 </body>
 </html>
