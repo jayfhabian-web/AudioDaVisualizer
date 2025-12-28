@@ -2,721 +2,494 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk Engine V38 - Sequencer Edition</title>
+    <title>Phonk Engine V39 - Pro Editor</title>
     <style>
         :root {
             --bg: #050505;
-            --panel: rgba(12, 12, 12, 0.95);
-            --border: rgba(255, 255, 255, 0.1);
+            --panel: #111;
+            --border: #333;
             --accent: #ff0033;
-            --highlight: #00ccff;
+            --accent-dim: #550011;
             --text: #ccc;
-            --timeline-bg: #111;
-            --block-bg: rgba(255, 0, 51, 0.6);
-            --block-sel: rgba(0, 204, 255, 0.8);
+            --block-base: rgba(100, 100, 100, 0.5);
         }
-        * { box-sizing: border-box; user-select: none; }
-        body { margin: 0; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; color: var(--text); }
+        * { box-sizing: border-box; user-select: none; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
 
-        /* --- STAGE --- */
-        #stage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 1; }
-        
-        /* LAYERS */
-        #layer-bg { position: absolute; width: 100%; height: 100%; z-index: 0; }
-        #bg-video, #bg-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; filter: grayscale(100%) contrast(1.2); }
-        
-        /* Layer 2: Watermark (Behind Visuals) */
-        #layer-wm { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;
-            display: flex; justify-content: center; align-items: center; 
+        /* --- TOP SECTION (Visualizer) --- */
+        #viewport {
+            flex: 1; position: relative; overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
         }
-        #wm-content { text-align: center; will-change: transform; }
+        canvas.vis-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
-        /* Layer 3: Visuals */
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        #c-particles { z-index: 2; }
-        #c-visuals { z-index: 3; mix-blend-mode: screen; }
-        
-        /* Layer 4: Post Processing DOM Overlays */
-        #fx-flash { position: absolute; width:100%; height:100%; background:#fff; opacity:0; z-index:10; pointer-events:none; mix-blend-mode: overlay; }
-        #fx-vignette { position: absolute; width:100%; height:100%; background: radial-gradient(circle, transparent 40%, #000 100%); z-index:9; pointer-events:none; opacity: 0.8; }
-        
-        /* --- UI LEFT PANEL --- */
-        #ui-panel {
-            position: absolute; top: 0; left: 0; width: 380px; height: calc(100vh - 160px); /* Leave room for timeline */
-            background: var(--panel); border-right: 1px solid var(--border);
-            padding: 10px; z-index: 50; overflow-y: auto; overflow-x: hidden;
-            backdrop-filter: blur(10px); transition: transform 0.2s ease;
+        /* UI OVERLAY (Top Left) */
+        #settings-overlay {
+            position: absolute; top: 10px; left: 10px; z-index: 100;
+            background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--border); border-radius: 5px;
+            backdrop-filter: blur(5px);
         }
-        #ui-panel.hidden { transform: translateX(-100%); }
+        .control-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 11px; }
+        input[type="range"] { flex: 1; height: 4px; -webkit-appearance: none; background: #444; border-radius: 2px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; cursor: pointer; }
 
-        /* --- TIMELINE PANEL (Bottom) --- */
-        #timeline-panel {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 160px;
-            background: #080808; border-top: 1px solid var(--border); z-index: 60;
-            display: flex; flex-direction: column;
-        }
-        #timeline-canvas { width: 100%; height: 100%; cursor: crosshair; background: #000; }
-        #timeline-controls {
-            height: 30px; background: #151515; border-bottom: 1px solid #333;
-            display: flex; align-items: center; padding: 0 10px; font-size: 10px; gap: 15px;
+        /* --- BOTTOM SECTION (Timeline) --- */
+        #timeline-area {
+            height: 220px; background: var(--panel); border-top: 1px solid var(--border);
+            display: flex; flex-direction: column; position: relative; z-index: 200;
         }
 
-        /* --- CONTROLS --- */
-        h2 { margin: 5px 0 15px 0; font-size: 12px; border-left: 3px solid var(--accent); padding-left: 8px; text-transform: uppercase; color: #fff; letter-spacing: 1px; }
-        .section-title { font-size: 10px; color: #666; font-weight: 700; text-transform: uppercase; margin: 15px 0 5px 0; border-bottom: 1px solid #333; padding-bottom: 3px; }
+        /* TOOLBAR */
+        #toolbar {
+            height: 40px; background: #181818; display: flex; align-items: center; padding: 0 10px; gap: 10px;
+            border-bottom: 1px solid #222;
+        }
+        .tool-btn {
+            padding: 5px 10px; background: #333; border: 1px solid #444; color: #aaa;
+            font-size: 10px; text-transform: uppercase; cursor: pointer; border-radius: 3px;
+            font-weight: bold; letter-spacing: 0.5px;
+        }
+        .tool-btn:hover { background: #444; color: #fff; }
+        .tool-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 0 10px var(--accent-dim); }
+        .divider { width: 1px; height: 20px; background: #444; margin: 0 5px; }
 
-        .row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
-        .col { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        /* TIMELINE CANVAS */
+        #timeline-scroll {
+            flex: 1; position: relative; overflow-x: auto; overflow-y: hidden;
+            background: #080808; cursor: crosshair;
+        }
+        #tl-canvas { display: block; height: 100%; }
         
-        label { font-size: 9px; color: #888; font-weight: 600; text-transform: uppercase; }
-        select, input[type="text"], input[type="number"] {
-            background: #1a1a1a; border: 1px solid #333; color: #eee; padding: 4px;
-            font-size: 10px; border-radius: 3px; outline: none; width: 100%;
-        }
-        button {
-            background: #222; border: 1px solid #333; color: #ccc; padding: 6px;
-            font-size: 9px; font-weight: bold; cursor: pointer; border-radius: 3px; text-transform: uppercase;
-        }
-        button:hover { background: #333; color: #fff; }
-        button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-        button.rec { background: #400; color: #f99; }
-        button.rec.on { background: #f00; color: #fff; box-shadow: 0 0 10px #f00; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        /* SCROLLBAR STYLE */
+        #timeline-scroll::-webkit-scrollbar { height: 8px; background: #111; }
+        #timeline-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 
-        /* SLIDERS */
-        input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; background: #333; border-radius: 2px; outline: none; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; background: #fff; border-radius: 50%; cursor: pointer; }
-        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
-
-        /* ARCHITECT GRID */
-        .arch-grid { display: flex; gap: 4px; height: 200px; margin-bottom: 10px; background: #000; padding: 4px; border: 1px solid #222; }
-        .arch-col { flex: 1; display: flex; flex-direction: column; position: relative; background: #0a0a0a; border: 1px solid #222; }
-        .visual-bar-area { flex: 1; position: relative; border-bottom: 1px solid #333; overflow: hidden; }
-        .bar-fill { position: absolute; bottom: 0; width: 100%; background: #444; transition: height 0.05s linear; }
-        .thresh-line { position: absolute; left: 0; width: 100%; height: 1px; background: #fff; z-index: 5; pointer-events: none; }
-        
-        .arch-controls { height: 100px; padding: 4px; display: flex; flex-direction: column; gap: 5px; background: #111; }
-        
-        /* Vertical Sliders Container */
-        .v-sliders { display: flex; height: 100%; justify-content: space-around; align-items: center; }
-        .v-sl-wrap { width: 15px; height: 60px; position: relative; display: flex; justify-content: center; }
-        .v-range {
-            -webkit-appearance: none; width: 60px; height: 3px; background: #444;
-            transform: rotate(-90deg); transform-origin: center; position: absolute; top: 28px;
+        /* POPUP EDITOR */
+        #block-editor {
+            position: absolute; display: none; width: 200px;
+            background: rgba(20, 20, 20, 0.95); border: 1px solid var(--accent);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.8); z-index: 500;
+            padding: 10px; border-radius: 4px;
         }
-        .v-label { position: absolute; top: -10px; font-size: 7px; color: #666; font-weight: bold; width: 100%; text-align: center; }
-
-        /* FLOATING TWEAK PANEL */
-        #dsp-float {
-            position: absolute; bottom: 180px; left: 400px; width: 220px; 
-            background: rgba(10,10,10,0.9); border: 1px solid var(--highlight);
-            padding: 10px; border-radius: 4px; z-index: 100; display: none;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        #dsp-float.active { display: block; }
-
-        /* EFFECT LIST */
-        .fx-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; background: #111; padding: 4px; border-radius: 3px; }
-        .fx-name { font-size: 9px; font-weight: bold; width: 60px; }
-        .fx-link { width: 70px; }
-        .fx-amt { width: 80px; }
+        #block-editor h3 { margin: 0 0 10px 0; font-size: 11px; color: var(--accent); text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .ed-row { margin-bottom: 8px; font-size: 10px; }
+        .ed-row label { display: block; color: #888; margin-bottom: 3px; }
+        .ed-row input[type="number"] { background: #333; border: 1px solid #444; color: #fff; padding: 3px; width: 100%; }
+        .ed-row button.del { width: 100%; background: #500; color: #faa; border: none; padding: 5px; cursor: pointer; margin-top: 5px; }
 
     </style>
 </head>
 <body>
 
-    <div id="stage">
-        <div id="layer-bg">
-            <video id="bg-video" loop muted playsinline style="display:none"></video>
-            <img id="bg-img" style="display:none">
-            <div id="bg-def" style="width:100%; height:100%; background: radial-gradient(circle at center, #222, #000);"></div>
-        </div>
-
-        <div id="layer-wm">
-            <div id="wm-content">
-                <h1 id="wm-text" style="font-size:80px; margin:0; font-family:Impact; text-shadow:0 0 20px rgba(0,0,0,0.8);">PHONK</h1>
-                <img id="wm-image" src="" style="display:none; max-width:300px;">
+    <div id="viewport">
+        <div id="settings-overlay">
+            <div class="control-row">
+                <button id="btn-load">📂 LOAD AUDIO</button>
+                <input type="file" id="inp-file" accept="audio/*" style="display:none">
+            </div>
+            <div class="control-row">
+                <span>VIS SCALE:</span>
+                <input type="range" id="master-scale" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-row">
+                <span>BG DIM:</span>
+                <input type="range" id="bg-dim" min="0" max="1" step="0.1" value="0.5">
             </div>
         </div>
 
-        <canvas id="c-particles"></canvas>
-        <canvas id="c-visuals"></canvas>
+        <canvas id="c-vis" class="vis-layer"></canvas>
+        <canvas id="c-fx" class="vis-layer" style="mix-blend-mode: overlay;"></canvas>
+    </div>
+
+    <div id="timeline-area">
+        <div id="toolbar">
+            <span style="font-size:10px; font-weight:bold; color:#666;">TOOLS:</span>
+            <button class="tool-btn active" data-type="shake">Shake</button>
+            <button class="tool-btn" data-type="flash">Flash</button>
+            <button class="tool-btn" data-type="invert">Invert</button>
+            <button class="tool-btn" data-type="glitch">Glitch</button>
+            <button class="tool-btn" data-type="blur">Blur</button>
+            
+            <div class="divider"></div>
+            
+            <button class="tool-btn" id="btn-play">▶ PLAY</button>
+            <span id="time-display" style="margin-left:auto; font-family:monospace; font-size:11px;">00:00.00</span>
+        </div>
+
+        <div id="timeline-scroll">
+            <canvas id="tl-canvas"></canvas>
+        </div>
         
-        <div id="fx-flash"></div>
-        <div id="fx-vignette"></div>
-    </div>
-
-    <button onclick="toggleUI()" style="position:absolute; top:10px; left:10px; z-index:100; width:auto;">MENU</button>
-
-    <div id="ui-panel">
-        <h2>Phonk Engine V38</h2>
-
-        <div class="row">
-            <button class="col" id="btn-load">LOAD AUDIO<input type="file" id="inp-audio" accept="audio/*" style="display:none"></button>
-            <button class="col" id="btn-play" disabled>PLAY</button>
-            <button class="col rec" id="btn-rec" disabled>● REC</button>
-        </div>
-        <div class="row">
-            <label class="col">Background <input type="file" id="inp-bg" accept="image/*,video/*"></label>
-            <label class="col">Watermark Img <input type="file" id="inp-wm-img" accept="image/*"></label>
-        </div>
-
-        <div class="section-title">Watermark Style</div>
-        <div class="row">
-            <input type="text" id="wm-txt-val" value="PHONK" placeholder="TEXT">
-            <input type="color" id="wm-col-val" value="#ffffff" style="width:30px; height:25px; padding:0;">
-        </div>
-        <div class="row">
-            <select id="wm-font" class="col">
-                <option value="Impact">Impact</option>
-                <option value="Arial Black">Arial Black</option>
-                <option value="Courier New">Glitch (Courier)</option>
-                <option value="Times New Roman">Serif (Times)</option>
-            </select>
-            <button id="btn-bold" class="col" style="max-width:30px;">B</button>
-            <button id="btn-italic" class="col" style="max-width:30px;">I</button>
-        </div>
-        <div class="row">
-             <label class="col">Mode:
-                <select id="wm-mode">
-                    <option value="static">Static</option>
-                    <option value="pulse">Pulse</option>
-                    <option value="bounce">DVD Bounce</option>
-                    <option value="shake">Shake</option>
-                </select>
-             </label>
-        </div>
-
-        <div class="section-title">Audio Architect (Reactive)</div>
-        <div class="arch-grid">
-            <script>
-                const bands = ['SUB', 'LOW', 'MID', 'HIGH'];
-                bands.forEach((b, i) => {
-                    document.write(`
-                    <div class="arch-col">
-                        <div class="visual-bar-area" id="bar-area-${i}" onmousedown="startDragThresh(${i}, event)">
-                            <div class="bar-fill" id="bar-fill-${i}"></div>
-                            <div class="thresh-line" id="thresh-${i}" style="bottom: 70%"></div>
-                            <div style="position:absolute; top:2px; left:2px; font-size:8px; color:#fff; background:#000; padding:1px;">${b}</div>
-                        </div>
-                        <div class="arch-controls">
-                            <button onclick="openDsp(${i})" style="width:100%; margin-bottom:4px;">DSP</button>
-                            <div class="v-sliders">
-                                <div class="v-sl-wrap"><div class="v-label" style="color:#aaa">G</div><input type="range" class="v-range" id="gain-${i}" min="0" max="3" step="0.1" value="1"></div>
-                                <div class="v-sl-wrap"><div class="v-label" style="color:var(--accent)">P</div><input type="range" class="v-range" id="punch-${i}" min="1" max="4" step="0.1" value="1.5"></div>
-                            </div>
-                        </div>
-                    </div>`);
-                });
-            </script>
-        </div>
-        <div class="row">
-            <label class="col">Master Pre-Amp <input type="range" id="master-pre" min="1" max="5" step="0.1" value="1.0"></label>
-            <label class="col">Smoothing <input type="range" id="smooth" min="0.1" max="0.95" step="0.05" value="0.7"></label>
-        </div>
-
-        <div class="section-title">Effect Linking</div>
-        <div id="fx-list">
+        <div id="block-editor">
+            <h3>Effect Settings</h3>
+            <div class="ed-row">
+                <label>Strength (0-100)</label>
+                <input type="range" id="ed-str" min="0" max="100" value="50">
             </div>
-
-        <div id="tl-edit-panel" style="margin-top:20px; border:1px solid var(--highlight); padding:10px; display:none; background:#0e0e0e;">
-            <div style="color:var(--highlight); font-size:10px; font-weight:bold; margin-bottom:5px;">TIMELINE BLOCK EDITOR</div>
-            <div class="row">
-                <label class="col">Type <select id="tl-type">
-                    <option value="shake">Shake</option>
-                    <option value="flash">Flash</option>
-                    <option value="invert">Invert</option>
-                    <option value="glitch">Glitch</option>
-                    <option value="blur">Blur</option>
-                </select></label>
+            <div class="ed-row">
+                <label>Tweening (Fade Out)</label>
+                <input type="checkbox" id="ed-fade"> Enable Smooth Exit
             </div>
-            <div class="row">
-                <label class="col">Strength <input type="range" id="tl-str" min="0" max="1" step="0.05"></label>
-            </div>
-            <button onclick="deleteSelectedBlock()" style="width:100%; color:#f55;">DELETE BLOCK</button>
+            <button class="del" id="ed-del">DELETE BLOCK</button>
         </div>
-
-        <div style="height:50px"></div>
-    </div>
-
-    <div id="timeline-panel">
-        <div id="timeline-controls">
-            <span>TIMELINE SEQUENCER</span>
-            <span style="color:#666;">Left Click: Add/Select | Drag: Move Time</span>
-            <span id="time-display" style="margin-left:auto; font-family:monospace;">00:00.00</span>
-        </div>
-        <canvas id="timeline-canvas"></canvas>
-    </div>
-
-    <div id="dsp-float">
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-            <strong style="color:var(--highlight); font-size:10px;">DSP TWEAK</strong>
-            <button onclick="document.getElementById('dsp-float').classList.remove('active')" style="padding:0 4px;">x</button>
-        </div>
-        <label>Attack <input type="range" id="dsp-atk" min="0" max="0.9" step="0.05"></label>
-        <label>Decay <input type="range" id="dsp-dec" min="0.05" max="0.5" step="0.01"></label>
-        <label>Gate <input type="range" id="dsp-gate" min="0" max="0.5" step="0.01"></label>
     </div>
 
     <script>
-        // --- CONFIG & STATE ---
-        const EFFECTS_LIST = [
-            { id: 'shake', name: 'Shake' },
-            { id: 'flash', name: 'Flash' },
-            { id: 'vhs', name: 'VHS Lines' },
-            { id: 'rgb', name: 'RGB Split' },
-            { id: 'fry', name: 'Deep Fry' },
-            { id: 'zoom', name: 'Pulse Zoom' }
-        ];
-
+        // --- CORE STATE ---
         const state = {
-            isPlaying: false,
-            isRecording: false,
-            audioCtx: null, source: null, analyser: null, buffer: null,
-            startTime: 0, pausedAt: 0,
-            
-            // Bands: 0=Sub, 1=Low, 2=Mid, 3=High
-            bands: [0,1,2,3].map(i => ({ val:0, peak:0, thresh:0.6, atk:0.1, dec:0.1, gate:0.1, gain:1, punch:1.5 })),
-            
-            // Effects State (Current frame values)
-            fx: { shake:0, flash:0, vhs:0, rgb:0, fry:0, zoom:0 },
-            
-            // Effect Links (Which band triggers what)
-            links: { shake:0, flash:3, vhs:1, rgb:0, fry:2, zoom:0 }, // Default mapping
-            
-            // Timeline
-            timeline: [], // { id, type, start, dur, str }
-            selectedBlock: null,
+            audioCtx: null, buffer: null, source: null, analyser: null,
+            startTime: 0, pausedAt: 0, isPlaying: false,
             duration: 0,
             
-            // Watermark Physics
-            wm: { x:0, y:0, dx:2, dy:2, sx:1, sy:1 },
-            particles: []
+            // Viewport
+            scale: 1.0,
+            
+            // Timeline
+            zoom: 100, // pixels per second
+            blocks: [], // { id, type, start, dur, str, fade }
+            activeTool: 'shake',
+            selectedBlock: null,
+            
+            // Runtime FX values
+            fx: { shake:0, flash:0, invert:0, glitch:0, blur:0 }
         };
 
-        const dom = {
-            stage: document.getElementById('stage'),
-            cvs: {
-                main: document.getElementById('c-visuals'),
-                part: document.getElementById('c-particles'),
-                tl: document.getElementById('timeline-canvas')
-            },
-            ctx: {
-                main: document.getElementById('c-visuals').getContext('2d'),
-                part: document.getElementById('c-particles').getContext('2d'),
-                tl: document.getElementById('timeline-canvas').getContext('2d')
-            },
-            wm: document.getElementById('wm-content')
+        const cvs = {
+            vis: document.getElementById('c-vis'),
+            fx: document.getElementById('c-fx'),
+            tl: document.getElementById('tl-canvas')
+        };
+        const ctx = {
+            vis: cvs.vis.getContext('2d'),
+            fx: cvs.fx.getContext('2d'),
+            tl: cvs.tl.getContext('2d')
         };
 
-        // --- INIT ---
+        // --- INITIALIZATION ---
         function init() {
             resize();
             window.addEventListener('resize', resize);
-            renderEffectList();
-            setupIO();
-            setupTimelineInteraction();
+            setupUI();
             requestAnimationFrame(loop);
         }
 
         function resize() {
-            [dom.cvs.main, dom.cvs.part].forEach(c => {
-                c.width = window.innerWidth; c.height = window.innerHeight;
-            });
-            dom.cvs.tl.width = dom.cvs.tl.parentElement.clientWidth;
-            dom.cvs.tl.height = dom.cvs.tl.parentElement.clientHeight - 30; // minus header
-            if(state.buffer) drawTimeline();
+            cvs.vis.width = cvs.fx.width = document.getElementById('viewport').clientWidth;
+            cvs.vis.height = cvs.fx.height = document.getElementById('viewport').clientHeight;
+            drawTimeline();
         }
 
-        function renderEffectList() {
-            const cont = document.getElementById('fx-list');
-            EFFECTS_LIST.forEach(fx => {
-                const div = document.createElement('div'); div.className = 'fx-row';
-                div.innerHTML = `
-                    <div class="fx-name">${fx.name}</div>
-                    <select class="fx-link" onchange="state.links['${fx.id}'] = parseInt(this.value)">
-                        <option value="-1">OFF</option>
-                        <option value="0" ${state.links[fx.id]==0?'selected':''}>SUB</option>
-                        <option value="1" ${state.links[fx.id]==1?'selected':''}>LOW</option>
-                        <option value="2" ${state.links[fx.id]==2?'selected':''}>MID</option>
-                        <option value="3" ${state.links[fx.id]==3?'selected':''}>HIGH</option>
-                    </select>
-                    <input type="range" class="fx-amt" min="0" max="2" step="0.1" value="1.0" oninput="/* factor logic */">
-                `;
-                cont.appendChild(div);
-            });
-        }
-
-        // --- AUDIO ENGINE ---
-        function setupIO() {
-            document.getElementById('btn-load').onclick = () => document.getElementById('inp-audio').click();
-            document.getElementById('inp-audio').onchange = async (e) => {
-                const f = e.target.files[0]; if(!f) return;
+        function setupUI() {
+            // Audio Load
+            document.getElementById('btn-load').onclick = () => document.getElementById('inp-file').click();
+            document.getElementById('inp-file').onchange = async (e) => {
+                const f = e.target.files[0];
                 const ab = await f.arrayBuffer();
                 state.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
                 state.buffer = await state.audioCtx.decodeAudioData(ab);
                 state.duration = state.buffer.duration;
-                document.getElementById('btn-play').disabled = false;
-                document.getElementById('btn-rec').disabled = false;
-                drawTimeline(); // Draw waveform
+                
+                // Resize timeline canvas based on duration
+                cvs.tl.width = state.duration * state.zoom;
+                cvs.tl.height = document.getElementById('timeline-scroll').clientHeight;
+                
+                drawTimeline();
             };
 
+            // Playback
             document.getElementById('btn-play').onclick = togglePlay;
             
-            // Image/Video Inputs
-            document.getElementById('inp-bg').onchange = (e) => {
-                const f = e.target.files[0]; const u = URL.createObjectURL(f);
-                if(f.type.includes('video')) { 
-                    const v = document.getElementById('bg-video'); v.src=u; v.style.display='block'; v.play(); 
-                    document.getElementById('bg-img').style.display='none';
-                } else {
-                    const i = document.getElementById('bg-img'); i.src=u; i.style.display='block';
-                    document.getElementById('bg-video').style.display='none';
-                }
-                document.getElementById('bg-def').style.display='none';
-            };
+            // Scale
+            document.getElementById('master-scale').oninput = (e) => state.scale = parseFloat(e.target.value);
+
+            // Tools
+            document.querySelectorAll('.tool-btn[data-type]').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.activeTool = btn.dataset.type;
+                };
+            });
+
+            // Timeline Interaction
+            cvs.tl.addEventListener('mousedown', handleTimelineClick);
             
-            // WM Image
-            document.getElementById('inp-wm-img').onchange = (e) => {
-                document.getElementById('wm-image').src = URL.createObjectURL(e.target.files[0]);
-                document.getElementById('wm-image').style.display = 'block';
-                document.getElementById('wm-text').style.display = 'none';
+            // Editor Controls
+            document.getElementById('ed-str').oninput = (e) => {
+                if(state.selectedBlock) { state.selectedBlock.str = parseInt(e.target.value); drawTimeline(); }
+            };
+            document.getElementById('ed-fade').onchange = (e) => {
+                if(state.selectedBlock) { state.selectedBlock.fade = e.target.checked; }
+            };
+            document.getElementById('ed-del').onclick = () => {
+                if(state.selectedBlock) {
+                    state.blocks = state.blocks.filter(b => b !== state.selectedBlock);
+                    closeEditor();
+                    drawTimeline();
+                }
             };
         }
 
+        // --- AUDIO ENGINE ---
         function togglePlay() {
             if(state.isPlaying) {
                 state.source.stop(); state.isPlaying = false;
                 state.pausedAt = state.audioCtx.currentTime - state.startTime;
-                document.getElementById('btn-play').innerText = "PLAY";
+                document.getElementById('btn-play').innerText = "▶ PLAY";
             } else {
                 state.source = state.audioCtx.createBufferSource();
                 state.source.buffer = state.buffer;
                 state.analyser = state.audioCtx.createAnalyser();
-                state.analyser.fftSize = 2048;
                 state.source.connect(state.analyser);
                 state.source.connect(state.audioCtx.destination);
-                
                 state.startTime = state.audioCtx.currentTime - state.pausedAt;
                 state.source.start(0, state.pausedAt);
                 state.isPlaying = true;
-                document.getElementById('btn-play').innerText = "STOP";
-                
-                // If bg video exists, play it
-                const v = document.getElementById('bg-video');
-                if(v.style.display !== 'none') v.play();
+                document.getElementById('btn-play').innerText = "⏸ STOP";
             }
         }
 
-        // --- MAIN LOOP ---
+        // --- RENDER LOOP ---
         function loop() {
             requestAnimationFrame(loop);
             
-            // 1. Audio Analysis
-            let freqData = new Uint8Array(0);
-            if(state.isPlaying && state.analyser) {
-                freqData = new Uint8Array(state.analyser.frequencyBinCount);
-                state.analyser.getByteFrequencyData(freqData);
-            }
-
-            // 2. Process Bands (Architecture)
-            const bandVals = [0,0,0,0]; // Calculated values
+            // 1. Calculate Time
+            const t = state.isPlaying ? (state.audioCtx.currentTime - state.startTime) : state.pausedAt;
             if(state.isPlaying) {
-                // Approximate freq ranges for Sub, Low, Mid, High
-                const ranges = [[0,4], [5,20], [21,100], [101,300]]; 
-                const pre = parseFloat(document.getElementById('master-pre').value);
-                
-                state.bands.forEach((b, i) => {
-                    // Avg frequency
-                    let sum = 0; let count = 0;
-                    if(freqData.length > 0) {
-                        for(let k=ranges[i][0]; k<=ranges[i][1]; k++) sum += freqData[k];
-                        count = ranges[i][1] - ranges[i][0] + 1;
-                    }
-                    let raw = (sum/count)/255 * pre * parseFloat(document.getElementById(`gain-${i}`).value);
-                    
-                    // Envelope Follower (Attack/Decay)
-                    if(raw > b.val) b.val += (raw - b.val) * (1-b.atk);
-                    else b.val -= b.dec;
-                    if(b.val < 0) b.val = 0;
-
-                    // Thresh Check
-                    let output = 0;
-                    if(b.val > b.thresh) {
-                        output = (b.val - b.thresh) * parseFloat(document.getElementById(`punch-${i}`).value);
-                    }
-                    bandVals[i] = output; // This is the "Trigger Strength"
-                    
-                    // Update UI Bars
-                    document.getElementById(`bar-fill-${i}`).style.height = Math.min(b.val*100, 100) + "%";
-                    document.getElementById(`bar-fill-${i}`).style.background = (output>0) ? 'var(--accent)' : '#444';
-                });
+                updateTimeDisplay(t);
+                drawTimelinePlayhead(t);
             }
 
-            // 3. Resolve Effects (Reactive + Timeline)
-            // Reset
-            Object.keys(state.fx).forEach(k => state.fx[k] = 0);
-
-            // A. Reactive (from Links)
-            EFFECTS_LIST.forEach(fx => {
-                const linkIdx = state.links[fx.id];
-                if(linkIdx > -1 && linkIdx < 4) {
-                    state.fx[fx.id] += bandVals[linkIdx];
+            // 2. Process Timeline Blocks (Tweening Logic)
+            Object.keys(state.fx).forEach(k => state.fx[k] = 0); // Reset
+            
+            state.blocks.forEach(b => {
+                if(t >= b.start && t < b.start + b.dur) {
+                    let val = b.str / 100; // Normalize 0-1
+                    
+                    // Tweening (Ease Out)
+                    if(b.fade) {
+                        const progress = (t - b.start) / b.dur;
+                        if(progress > 0.7) { // Fade out last 30%
+                            const fadeP = (progress - 0.7) / 0.3;
+                            val *= (1 - fadeP);
+                        }
+                    }
+                    state.fx[b.type] += val;
                 }
             });
 
-            // B. Timeline (Scripted)
-            const currentTime = state.isPlaying ? (state.audioCtx.currentTime - state.startTime) : state.pausedAt;
-            if(state.isPlaying) updateTimeDisplay(currentTime);
-
-            state.timeline.forEach(block => {
-                if(currentTime >= block.start && currentTime < block.start + block.dur) {
-                    state.fx[block.type] += block.str;
-                }
-            });
+            // 3. Audio Data
+            let freq = new Uint8Array(0);
+            if(state.isPlaying) {
+                freq = new Uint8Array(state.analyser.frequencyBinCount);
+                state.analyser.getByteFrequencyData(freq);
+            }
 
             // 4. Render Visuals
-            renderStage(state.fx, bandVals, freqData);
-            
-            // 5. Render Timeline Playhead
-            if(state.buffer) drawTimelinePlayhead(currentTime);
+            renderVisuals(freq);
         }
 
-        function renderStage(fx, bands, freqData) {
-            const ctx = dom.ctx.main;
-            const w = dom.cvs.main.width; const h = dom.cvs.main.height;
-            ctx.clearRect(0,0,w,h);
-
-            // APPLY FX
-            // Shake
-            const shake = fx.shake * 20;
-            const dx = (Math.random()-0.5) * shake;
-            const dy = (Math.random()-0.5) * shake;
-            dom.stage.style.transform = `translate(${dx}px, ${dy}px) scale(${1 + fx.zoom*0.2})`;
-
-            // Flash
-            document.getElementById('fx-flash').style.opacity = Math.min(fx.flash, 0.8);
-
-            // Vignette Pulse
-            document.getElementById('fx-vignette').style.opacity = 0.5 + (fx.vhs * 0.4);
-
-            // Deep Fry (CSS Filter on Canvas)
-            dom.cvs.main.style.filter = `contrast(${100 + fx.fry*100}%) saturate(${100 + fx.fry*200}%) blur(${fx.blur?fx.blur*5:0}px)`;
-
-            // --- DRAW CIRCULAR VISUALIZER ---
-            const cx = w/2; const cy = h/2;
-            const rad = 200 + (fx.zoom * 50);
+        function renderVisuals(data) {
+            const w = cvs.vis.width; const h = cvs.vis.height;
+            const c = ctx.vis;
             
-            if(freqData.length > 0) {
-                const bars = 100;
-                ctx.beginPath();
+            // Clear
+            c.fillStyle = `rgba(0,0,0,${0.1 + state.fx.blur*0.5})`; // Trail effect
+            c.fillRect(0,0,w,h);
+
+            // Apply Shake
+            const shakeAmt = state.fx.shake * 50;
+            const dx = (Math.random()-0.5)*shakeAmt;
+            const dy = (Math.random()-0.5)*shakeAmt;
+            
+            c.save();
+            c.translate(w/2 + dx, h/2 + dy);
+            c.scale(state.scale + state.fx.shake*0.1, state.scale + state.fx.shake*0.1);
+
+            // Draw Circle Vis
+            if(data.length) {
+                const rad = 150;
+                const bars = 60;
+                c.beginPath();
                 for(let i=0; i<bars; i++) {
-                    const val = (freqData[i*2] / 255) * (1 + fx.shake);
-                    const ang = (i / bars) * Math.PI * 2;
-                    const len = val * 150;
+                    const val = data[i*2] / 255;
+                    const ang = (i/bars) * Math.PI * 2;
+                    const len = val * 200 * (1 + state.fx.invert); // Invert makes bars huge
                     
-                    const x1 = cx + Math.cos(ang) * rad;
-                    const y1 = cy + Math.sin(ang) * rad;
-                    const x2 = cx + Math.cos(ang) * (rad + len);
-                    const y2 = cy + Math.sin(ang) * (rad + len);
+                    const x = Math.cos(ang) * (rad + len);
+                    const y = Math.sin(ang) * (rad + len);
                     
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
+                    // Color Logic
+                    if(state.fx.invert > 0.5) c.strokeStyle = '#fff';
+                    else c.strokeStyle = `hsl(${i*5}, 100%, 50%)`;
+                    
+                    c.lineWidth = 5 + state.fx.glitch*10;
+                    
+                    // Draw line from center-ish out
+                    c.moveTo(Math.cos(ang)*rad, Math.sin(ang)*rad);
+                    c.lineTo(x, y);
                 }
-                ctx.strokeStyle = (fx.fry > 0.5) ? '#ff5500' : '#fff';
-                ctx.lineWidth = 3 + (fx.rgb * 5);
-                
-                // RGB Split Simulation (Offset drawing)
-                if(fx.rgb > 0.1) {
-                    ctx.shadowColor = '#00ffff'; ctx.shadowOffsetX = fx.rgb*10;
-                    ctx.stroke();
-                    ctx.shadowColor = '#ff0000'; ctx.shadowOffsetX = -fx.rgb*10;
-                    ctx.stroke();
-                    ctx.shadowColor = 'transparent';
-                } else {
-                    ctx.stroke();
-                }
+                c.stroke();
             }
 
-            // --- PARTICLES ---
-            const pCtx = dom.ctx.part;
-            pCtx.clearRect(0,0,w,h);
-            // Spawn
-            if(fx.shake > 0.2 || Math.random() < 0.1) {
-                state.particles.push({x:cx, y:cy, vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10, life:1});
-            }
-            state.particles.forEach((p, i) => {
-                p.x+=p.vx; p.y+=p.vy; p.life -= 0.02;
-                pCtx.fillStyle = `rgba(255, ${255*p.life}, ${255*p.life}, ${p.life})`;
-                pCtx.fillRect(p.x, p.y, 4, 4);
-                if(p.life<=0) state.particles.splice(i,1);
-            });
+            c.restore();
 
-            // --- WATERMARK PHYSICS ---
-            updateWatermark(fx);
-        }
-
-        function updateWatermark(fx) {
-            const wm = document.getElementById('wm-content');
-            const cont = document.getElementById('layer-wm');
-            const mode = document.getElementById('wm-mode').value;
+            // FX Overlays
+            const fxC = ctx.fx;
+            fxC.clearRect(0,0,w,h);
             
-            // Styles
-            const txt = document.getElementById('wm-text');
-            txt.innerText = document.getElementById('wm-txt-val').value;
-            txt.style.color = document.getElementById('wm-col-val').value;
-            txt.style.fontFamily = document.getElementById('wm-font').value;
-            txt.style.fontWeight = document.getElementById('btn-bold').classList.contains('active') ? 'bold':'normal';
-            txt.style.fontStyle = document.getElementById('btn-italic').classList.contains('active') ? 'italic':'normal';
-
-            // Motion
-            if(mode === 'bounce') {
-                const rect = wm.getBoundingClientRect();
-                const winW = window.innerWidth; const winH = window.innerHeight;
-                state.wm.x += state.wm.dx; state.wm.y += state.wm.dy;
-                
-                if(state.wm.x <= 0 || state.wm.x + rect.width >= winW) state.wm.dx *= -1;
-                if(state.wm.y <= 0 || state.wm.y + rect.height >= winH) state.wm.dy *= -1;
-                
-                cont.style.justifyContent = 'flex-start'; cont.style.alignItems = 'flex-start';
-                wm.style.transform = `translate(${state.wm.x}px, ${state.wm.y}px)`;
-            } else {
-                cont.style.justifyContent = 'center'; cont.style.alignItems = 'center';
-                let s = 1;
-                if(mode === 'pulse') s = 1 + (fx.zoom * 0.3);
-                if(mode === 'shake') { s = 1; wm.style.transform = `rotate(${(Math.random()-0.5)*10}deg)`; }
-                else wm.style.transform = `scale(${s})`;
+            // Flash
+            if(state.fx.flash > 0) {
+                fxC.fillStyle = `rgba(255,255,255,${state.fx.flash * 0.5})`;
+                fxC.fillRect(0,0,w,h);
             }
+            
+            // Invert (CSS Filter trick)
+            cvs.vis.style.filter = `invert(${state.fx.invert * 100}%) blur(${state.fx.blur * 10}px)`;
         }
 
-        // --- TIMELINE LOGIC ---
+        // --- TIMELINE DRAWING ---
         function drawTimeline() {
-            const cvs = dom.cvs.tl; const ctx = dom.ctx.tl;
-            const w = cvs.width; const h = cvs.height;
-            ctx.fillStyle = '#000'; ctx.fillRect(0,0,w,h);
+            const c = ctx.tl;
+            const w = cvs.tl.width; const h = cvs.tl.height;
+            c.fillStyle = '#0a0a0a'; c.fillRect(0,0,w,h);
             
-            // Waveform
-            if(state.buffer) {
-                const data = state.buffer.getChannelData(0);
-                const step = Math.ceil(data.length / w);
-                const amp = h / 2;
-                ctx.fillStyle = '#333';
-                ctx.beginPath();
-                for(let i=0; i<w; i++) {
-                    let min=1.0, max=-1.0;
-                    for(let j=0; j<step; j++) {
-                        const val = data[(i*step)+j];
-                        if(val<min)min=val; if(val>max)max=val;
-                    }
-                    ctx.fillRect(i, (1+min)*amp, 1, Math.max(1, (max-min)*amp));
+            if(!state.buffer) {
+                c.fillStyle = '#333'; c.font = '20px Arial'; c.fillText("LOAD AUDIO TO EDIT", 20, 50);
+                return;
+            }
+
+            // 1. Draw Bass Map (Heatmap) - Background
+            const data = state.buffer.getChannelData(0);
+            const step = Math.ceil(data.length / w);
+            
+            c.fillStyle = '#300'; // Dark Red for Bass
+            for(let i=0; i<w; i+=2) {
+                // Simple cheap low-pass sim: average a larger chunk
+                let sum = 0;
+                for(let j=0; j<step*4; j++) {
+                    if(data[i*step + j]) sum += Math.abs(data[i*step + j]);
+                }
+                const bassVal = sum / (step*4);
+                if(bassVal > 0.3) { // Threshold
+                    c.fillRect(i, h/2 - bassVal*h*0.8, 2, bassVal*h*1.6);
                 }
             }
 
-            // Blocks
-            state.timeline.forEach(b => {
-                const x = (b.start / state.duration) * w;
-                const bw = (b.dur / state.duration) * w;
-                ctx.fillStyle = (state.selectedBlock === b) ? 'var(--block-sel)' : 'var(--block-bg)';
-                ctx.fillRect(x, 10, Math.max(2, bw), h-20);
-                ctx.fillStyle = '#fff';
-                ctx.fillText(b.type, x+2, 20);
-            });
-        }
-
-        function drawTimelinePlayhead(time) {
-            const w = dom.cvs.tl.width;
-            const x = (time / state.duration) * w;
-            const ctx = dom.ctx.tl;
-            // Redraw everything to clear old playhead (inefficient but simple)
-            drawTimeline(); 
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(x, 0, 1, dom.cvs.tl.height);
-        }
-
-        function setupTimelineInteraction() {
-            const cvs = dom.cvs.tl;
-            
-            cvs.addEventListener('mousedown', e => {
-                if(!state.buffer) return;
-                const rect = cvs.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const t = (x / rect.width) * state.duration;
-                
-                // Check selection
-                const clickedBlock = state.timeline.find(b => t >= b.start && t <= b.start + b.dur);
-                
-                if(clickedBlock) {
-                    state.selectedBlock = clickedBlock;
-                    openBlockEditor(clickedBlock);
-                } else {
-                    // Add new block
-                    const newBlock = { id: Date.now(), type: 'shake', start: t, dur: 1.0, str: 1.0 };
-                    state.timeline.push(newBlock);
-                    state.selectedBlock = newBlock;
-                    openBlockEditor(newBlock);
+            // 2. Draw Main Waveform - Foreground
+            c.fillStyle = '#444';
+            c.beginPath();
+            for(let i=0; i<w; i++) {
+                let max = 0;
+                for(let j=0; j<step; j++) {
+                    const v = Math.abs(data[i*step+j]);
+                    if(v>max) max=v;
                 }
-                drawTimeline();
+                c.fillRect(i, h/2 - max*h*0.4, 1, max*h*0.8);
+            }
+
+            // 3. Draw Blocks
+            state.blocks.forEach(b => {
+                const x = b.start * state.zoom;
+                const width = b.dur * state.zoom;
+                
+                // Color based on type
+                if(b.type === 'shake') c.fillStyle = 'rgba(255, 50, 50, 0.6)';
+                else if(b.type === 'flash') c.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                else c.fillStyle = 'rgba(50, 150, 255, 0.6)';
+                
+                if(state.selectedBlock === b) {
+                    c.strokeStyle = '#fff'; c.lineWidth = 2;
+                    c.strokeRect(x, 10, width, h-20);
+                }
+                
+                c.fillRect(x, 10, width, h-20);
+                
+                // Label
+                c.fillStyle = '#fff'; c.font = '10px Arial';
+                c.fillText(b.type, x+2, 25);
+                
+                // Tween Line
+                if(b.fade) {
+                    c.strokeStyle = '#fff'; c.beginPath();
+                    c.moveTo(x, 30);
+                    c.lineTo(x + width*0.7, 30);
+                    c.lineTo(x + width, 40); // Dip down
+                    c.stroke();
+                }
             });
         }
-        
-        function openBlockEditor(block) {
-            const p = document.getElementById('tl-edit-panel');
-            p.style.display = 'block';
-            document.getElementById('tl-type').value = block.type;
-            document.getElementById('tl-str').value = block.str;
+
+        function drawTimelinePlayhead(t) {
+            // Re-draw bg + blocks first (not efficient, but clean)
+            drawTimeline();
+            const x = t * state.zoom;
+            const c = ctx.tl;
+            c.fillStyle = '#ff0033';
+            c.fillRect(x, 0, 2, cvs.tl.height);
             
-            // Update block on input change
-            document.getElementById('tl-type').onchange = e => { block.type = e.target.value; drawTimeline(); };
-            document.getElementById('tl-str').oninput = e => { block.str = parseFloat(e.target.value); };
-        }
-        
-        window.deleteSelectedBlock = () => {
-            if(state.selectedBlock) {
-                state.timeline = state.timeline.filter(b => b !== state.selectedBlock);
-                state.selectedBlock = null;
-                document.getElementById('tl-edit-panel').style.display = 'none';
-                drawTimeline();
+            // Auto scroll
+            const scroll = document.getElementById('timeline-scroll');
+            if(x > scroll.scrollLeft + scroll.clientWidth - 50) {
+                scroll.scrollLeft = x - 100;
             }
-        };
+        }
+
+        function handleTimelineClick(e) {
+            if(!state.buffer) return;
+            const rect = cvs.tl.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const t = x / state.zoom;
+            
+            // 1. Check if clicking existing block
+            const clicked = state.blocks.find(b => t >= b.start && t <= b.start + b.dur);
+            
+            if(clicked) {
+                selectBlock(clicked, e.clientX, e.clientY);
+            } else {
+                // 2. Create New Block
+                const newBlock = {
+                    id: Date.now(),
+                    type: state.activeTool,
+                    start: t,
+                    dur: 0.5, // Default 0.5s
+                    str: 50,
+                    fade: false
+                };
+                state.blocks.push(newBlock);
+                selectBlock(newBlock, e.clientX, e.clientY);
+            }
+        }
+
+        function selectBlock(block, mx, my) {
+            state.selectedBlock = block;
+            drawTimeline();
+            
+            // Open Editor
+            const ed = document.getElementById('block-editor');
+            ed.style.display = 'block';
+            
+            // Position near click but keep in bounds
+            ed.style.left = Math.min(window.innerWidth - 220, mx + 10) + 'px';
+            ed.style.top = Math.min(window.innerHeight - 150, my - 50) + 'px';
+            
+            // Populate
+            document.getElementById('ed-str').value = block.str;
+            document.getElementById('ed-fade').checked = block.fade;
+        }
+
+        function closeEditor() {
+            document.getElementById('block-editor').style.display = 'none';
+            state.selectedBlock = null;
+        }
 
         function updateTimeDisplay(t) {
             const m = Math.floor(t/60).toString().padStart(2,'0');
             const s = (t%60).toFixed(2).padStart(5,'0');
             document.getElementById('time-display').innerText = `${m}:${s}`;
         }
-
-        // --- HELPERS ---
-        window.openDsp = (i) => {
-            const p = document.getElementById('dsp-float');
-            p.classList.add('active');
-            // Bind inputs to band i
-            const b = state.bands[i];
-            ['atk','dec','gate'].forEach(k => {
-                const inp = document.getElementById(`dsp-${k}`);
-                inp.value = b[k];
-                inp.oninput = (e) => b[k] = parseFloat(e.target.value);
-            });
-        };
-        
-        // Threshold Dragging
-        window.startDragThresh = (i, e) => {
-            const move = (ev) => {
-                const rect = document.getElementById(`bar-area-${i}`).getBoundingClientRect();
-                let val = 1 - (ev.clientY - rect.top) / rect.height;
-                val = Math.max(0, Math.min(1, val));
-                state.bands[i].thresh = val;
-                document.getElementById(`thresh-${i}`).style.bottom = (val*100) + "%";
-            };
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', () => document.removeEventListener('mousemove', move), {once:true});
-            move(e);
-        };
-
-        // Font Styles
-        document.getElementById('btn-bold').onclick = function() { this.classList.toggle('active'); };
-        document.getElementById('btn-italic').onclick = function() { this.classList.toggle('active'); };
-        window.toggleUI = () => document.getElementById('ui-panel').classList.toggle('hidden');
 
         init();
     </script>
