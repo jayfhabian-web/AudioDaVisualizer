@@ -2,14 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V7 - Connection Fix</title>
+    <title>Phonk Engine V8 - Production Ready</title>
     <style>
-        body { margin: 0; background: #080808; font-family: monospace; color: white; overflow: hidden; }
+        /* --- MODERN UI VARIABLES --- */
+        :root {
+            --primary: #ff0055;
+            --bg: #050505;
+            --panel: rgba(20, 20, 20, 0.85);
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #e0e0e0;
+        }
+
+        body { margin: 0; background: var(--bg); font-family: 'Inter', 'Segoe UI', sans-serif; overflow: hidden; color: var(--text); }
         
-        /* VISUAL LAYERS */
+        /* --- VISUAL LAYERS --- */
         #flash-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            pointer-events: none; z-index: 10; opacity: 0; background: white; mix-blend-mode: overlay;
+            pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: overlay;
         }
         
         #canvas-layer { position: absolute; top: 0; left: 0; z-index: 1; }
@@ -17,39 +26,74 @@
         #logo-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 300px; height: 300px; z-index: 5;
-            background-color: #111; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 0 5px #333;
+            border-radius: 50%; 
             background-size: cover; background-position: center;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
 
-        /* UI CONTROLS */
-        #ui {
-            position: absolute; top: 0; left: 0; width: 340px; height: 100vh;
-            background: rgba(10,10,10,0.95); border-right: 1px solid #333;
-            padding: 15px; box-sizing: border-box; z-index: 20; overflow-y: auto;
+        /* --- CONTROL PANEL --- */
+        #ui-panel {
+            position: absolute; top: 0; left: 0; width: 320px; height: 100vh;
+            background: var(--panel); backdrop-filter: blur(15px);
+            border-right: 1px solid var(--border);
+            padding: 20px; box-sizing: border-box; z-index: 20; overflow-y: auto;
+            transition: transform 0.3s ease;
         }
 
-        h3 { border-bottom: 2px solid #ff0055; padding-bottom: 5px; color: #fff; margin-top: 20px; }
-        label { color: #888; font-size: 11px; display: block; margin-top: 10px; }
-        input[type="range"] { width: 100%; margin: 5px 0; cursor: pointer; }
+        #ui-panel.hidden { transform: translateX(-100%); }
+
+        /* TYPOGRAPHY & ELEMENTS */
+        h2 { font-size: 18px; margin: 0 0 20px 0; letter-spacing: -0.5px; color: white; display:flex; align-items:center; gap:10px; }
+        .status-dot { width: 8px; height: 8px; background: red; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px red; }
+        .status-dot.active { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
+
+        h3 { font-size: 12px; text-transform: uppercase; color: var(--primary); margin-top: 25px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
         
-        /* THE AUDIO PLAYER */
-        audio { width: 100%; margin-top: 10px; border-radius: 4px; }
+        .control-group { margin-bottom: 15px; }
+        label { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 6px; font-weight: 600; }
         
-        /* DEBUG BASS METER */
-        .meter-box { width: 100%; height: 25px; background: #222; border: 1px solid #444; position: relative; margin-top: 5px; }
-        #bass-fill { height: 100%; width: 0%; background: #00ff00; transition: width 0.05s linear; }
-        #thresh-line { position: absolute; top: 0; bottom: 0; width: 2px; background: red; left: 50%; z-index: 5; }
+        input[type="range"] { 
+            width: 100%; height: 4px; background: #333; border-radius: 2px; 
+            appearance: none; cursor: pointer; 
+        }
+        input[type="range"]::-webkit-slider-thumb { 
+            appearance: none; width: 12px; height: 12px; background: var(--primary); border-radius: 50%; 
+        }
+        
+        input[type="file"] { 
+            width: 100%; background: #111; border: 1px solid var(--border); 
+            padding: 8px; border-radius: 4px; color: #aaa; font-size: 11px; 
+        }
 
-        /* EFFECT STACK */
-        .effect-item { background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-left: 3px solid #555; }
-        .effect-header { display: flex; justify-content: space-between; color: white; font-weight: bold; font-size: 12px; }
-        .remove { color: #666; cursor: pointer; } .remove:hover { color: red; }
+        /* BASS METER */
+        .meter-container { height: 6px; background: #111; border-radius: 3px; position: relative; overflow: hidden; margin-top: 5px; }
+        .meter-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #ff8800); width: 0%; transition: width 0.05s; }
+        .meter-thresh { position: absolute; top: 0; bottom: 0; width: 2px; background: white; z-index: 2; box-shadow: 0 0 4px white; }
 
-        button.add-fx { width: 100%; padding: 8px; background: #222; border: 1px dashed #555; color: #ccc; cursor: pointer; margin-top: 5px; }
-        button.add-fx:hover { border-color: #ff0055; color: white; }
+        /* EFFECT STACK CARDS */
+        .effect-card {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            padding: 12px; border-radius: 6px; margin-bottom: 8px; position: relative;
+        }
+        .effect-card h4 { margin: 0 0 8px 0; font-size: 11px; color: white; display: flex; justify-content: space-between; }
+        .remove-btn { cursor: pointer; opacity: 0.5; } .remove-btn:hover { opacity: 1; color: red; }
+        
+        .add-btn {
+            width: 100%; padding: 10px; background: transparent; border: 1px dashed #444; color: #888;
+            border-radius: 6px; cursor: pointer; font-size: 11px; margin-top: 5px; transition: 0.2s;
+        }
+        .add-btn:hover { border-color: var(--primary); color: white; background: rgba(255,0,85,0.05); }
 
-        #status-log { position: absolute; bottom: 10px; left: 10px; color: yellow; font-size: 10px; z-index: 100; pointer-events: none; }
+        /* TOGGLE BUTTON */
+        #toggle-btn {
+            position: absolute; top: 20px; left: 340px; z-index: 21;
+            background: var(--panel); border: 1px solid var(--border); color: white;
+            padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: left 0.3s ease;
+        }
+        #ui-panel.hidden + #toggle-btn { left: 20px; }
+
+        /* HIDDEN AUDIO PLAYER */
+        #audio-player { width: 100%; margin-top: 10px; height: 30px; opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -57,235 +101,291 @@
     <div id="flash-layer"></div>
     <canvas id="canvas-layer"></canvas>
     <div id="logo-container"></div>
-    <div id="status-log">Waiting for user...</div>
 
-    <div id="ui">
-        <h2>PHONK ENGINE V7</h2>
-        
-        <label>1. SELECT SONG</label>
-        <input type="file" id="file-upload" accept="audio/*">
-        
-        <label>2. PLAY AUDIO (Use this player)</label>
-        <audio id="audio-player" controls></audio>
-        
-        <label>3. CENTER IMAGE</label>
-        <input type="file" id="img-upload" accept="image/*">
+    <div id="ui-panel">
+        <h2>
+            <span id="status-dot" class="status-dot"></span>
+            PHONK MAKER
+        </h2>
 
-        <h3>BASS SETTINGS</h3>
-        <label>Bass Meter (Must cross Red Line)</label>
-        <div class="meter-box">
-            <div id="thresh-line"></div>
-            <div id="bass-fill"></div>
+        <div class="control-group">
+            <label>Song File</label>
+            <input type="file" id="file-upload" accept="audio/*">
+            <audio id="audio-player" controls></audio>
+        </div>
+        <div class="control-group">
+            <label>Center Logo</label>
+            <input type="file" id="img-upload" accept="image/*">
+        </div>
+
+        <h3>Bass Engine</h3>
+        <div class="control-group">
+            <label>Bass Threshold <span id="lbl-thresh">150</span></label>
+            <div class="meter-container">
+                <div id="thresh-line" class="meter-thresh" style="left: 58%"></div>
+                <div id="meter-fill" class="meter-fill"></div>
+            </div>
+            <input type="range" id="threshold" min="0" max="255" value="150" oninput="updateUI(this.value, 'lbl-thresh')">
+            <p style="font-size:10px; color:#666; margin-top:4px;">Drag slider until Red Line is just inside the moving bar.</p>
         </div>
         
-        <label>Threshold (Gate)</label>
-        <input type="range" id="threshold" min="0" max="255" value="150" oninput="updateThresh(this.value)">
-        
-        <label>Bass Decay (Heavy vs Snappy)</label>
-        <input type="range" id="decay" min="0.1" max="0.95" step="0.05" value="0.85">
+        <div class="control-group">
+            <label>Decay (Heaviness) <span id="lbl-decay">0.85</span></label>
+            <input type="range" id="decay" min="0.1" max="0.95" step="0.05" value="0.85" oninput="updateUI(this.value, 'lbl-decay')">
+        </div>
 
-        <h3>EFFECTS STACK</h3>
+        <h3>Spectrum Style</h3>
+        <div class="control-group">
+            <label>Bar Count (Resolution) <span id="lbl-fft">128</span></label>
+            <input type="range" id="fft-range" min="5" max="9" step="1" value="7" oninput="updateFFT(this.value)">
+        </div>
+        <div class="control-group">
+            <label>Bass Bar Pop (Points Jump)</label>
+            <input type="range" id="bass-pop" min="1" max="3" step="0.1" value="1.5">
+        </div>
+        <div class="control-group">
+            <label>Colors</label>
+            <div style="display:flex; gap:5px">
+                <input type="color" id="col-1" value="#ff0055" style="height:30px; padding:0;">
+                <input type="color" id="col-2" value="#5500ff" style="height:30px; padding:0;">
+            </div>
+        </div>
+
+        <h3>Effect Stack</h3>
         <div id="stack-container"></div>
-        <button class="add-fx" onclick="addFx('zoom')">+ ADD ZOOM</button>
-        <button class="add-fx" onclick="addFx('rotate')">+ ADD ROTATE</button>
-        <button class="add-fx" onclick="addFx('exposure')">+ ADD FLASH/EXPOSURE</button>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+            <button class="add-btn" onclick="addFx('zoom')">+ Zoom</button>
+            <button class="add-btn" onclick="addFx('rotate')">+ Rotate</button>
+            <button class="add-btn" onclick="addFx('exposure')">+ Flash</button>
+            <button class="add-btn" onclick="addFx('shake')">+ Shake</button>
+        </div>
     </div>
 
+    <button id="toggle-btn" onclick="togglePanel()">Hide Controls</button>
+
     <script>
-        // --- GLOBAL VARIABLES ---
-        const audioPlayer = document.getElementById('audio-player');
-        const canvas = document.getElementById('canvas-layer');
-        const ctx = canvas.getContext('2d');
-        const logo = document.getElementById('logo-container');
-        const flash = document.getElementById('flash-layer');
-        const log = document.getElementById('status-log');
-        
-        // Audio Graph
+        // --- CONFIG ---
+        const state = {
+            effects: [
+                { id: 1, type: 'zoom', intensity: 0.4 }, // Default effect
+            ],
+            smoothedBass: 0,
+            fftSize: 256,
+            isConnected: false
+        };
+
+        const dom = {
+            audio: document.getElementById('audio-player'),
+            canvas: document.getElementById('canvas-layer'),
+            ctx: document.getElementById('canvas-layer').getContext('2d'),
+            logo: document.getElementById('logo-container'),
+            flash: document.getElementById('flash-layer'),
+            meter: document.getElementById('meter-fill'),
+            threshLine: document.getElementById('thresh-line'),
+            statusDot: document.getElementById('status-dot')
+        };
+
+        dom.canvas.width = window.innerWidth;
+        dom.canvas.height = window.innerHeight;
+
         let audioCtx, analyser, source;
-        let isConnected = false;
-        
-        // State
-        let effects = [];
-        let smoothedBass = 0;
-        
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
 
-        // --- 1. SETUP AUDIO (The Fix) ---
-        // We use the 'play' event to trigger the connection. This ensures browser permission.
-        audioPlayer.addEventListener('play', async () => {
-            if (isConnected) {
-                if(audioCtx.state === 'suspended') audioCtx.resume();
-                return;
-            }
-
+        // --- AUDIO CORE (V7 Engine) ---
+        dom.audio.addEventListener('play', () => {
+            if (state.isConnected) { if(audioCtx.state === 'suspended') audioCtx.resume(); return; }
+            
             try {
-                log.innerText = "Initializing Audio Context...";
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Create Source from the HTML Player
-                source = audioCtx.createMediaElementSource(audioPlayer);
+                source = audioCtx.createMediaElementSource(dom.audio);
                 analyser = audioCtx.createAnalyser();
+                analyser.fftSize = state.fftSize;
                 
-                // Settings
-                analyser.fftSize = 256; 
-                
-                // Connect: Source -> Analyser -> Speakers
                 source.connect(analyser);
                 analyser.connect(audioCtx.destination);
                 
-                isConnected = true;
-                log.innerText = "Audio Connected! Engine Running.";
-                renderLoop();
-            } catch (e) {
-                log.innerText = "ERROR: " + e.message;
-            }
+                state.isConnected = true;
+                dom.statusDot.classList.add('active');
+                render();
+            } catch(e) { console.error(e); }
         });
 
-        // --- 2. FILE HANDLING ---
-        document.getElementById('file-upload').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const url = URL.createObjectURL(file);
-            audioPlayer.src = url;
-            audioPlayer.play(); // Auto-play to trigger the event above
-        });
-
-        document.getElementById('img-upload').addEventListener('change', function(e) {
-            const url = URL.createObjectURL(e.target.files[0]);
-            logo.style.backgroundImage = `url(${url})`;
-            logo.innerText = "";
-        });
-
-        // --- 3. THE RENDER LOOP ---
-        function renderLoop() {
-            requestAnimationFrame(renderLoop);
+        // --- RENDER LOOP ---
+        function render() {
+            requestAnimationFrame(render);
             
             const bufferLength = analyser.frequencyBinCount;
             const data = new Uint8Array(bufferLength);
             analyser.getByteFrequencyData(data);
 
-            // A. GET BASS (Indices 1,2,3 - Low Freqs)
-            let rawBass = (data[1] + data[2] + data[3]) / 3;
-
-            // B. DRAW METER
-            document.getElementById('bass-fill').style.width = (rawBass / 255 * 100) + "%";
-
-            // C. THRESHOLD CHECK
+            // 1. BASS CALC (Indices 1-4)
+            let rawBass = (data[1] + data[2] + data[3] + data[4]) / 4;
+            
+            // 2. UI METER UPDATE
+            dom.meter.style.width = (rawBass / 255 * 100) + "%";
+            
+            // 3. THRESHOLD & GATE
             const threshVal = parseInt(document.getElementById('threshold').value);
             let activeBass = 0;
-
             if (rawBass > threshVal) {
-                // If loud enough, calculate strength (0.0 to 1.0)
-                activeBass = (rawBass - threshVal) / (255 - threshVal);
+                // Normalize the overflow (How much did we beat the threshold?)
+                activeBass = (rawBass - threshVal) / (255 - threshVal); 
             }
 
-            // D. SMOOTHING (Envelope)
+            // 4. PHYSICS (Decay)
             const decay = parseFloat(document.getElementById('decay').value);
-            if (activeBass > smoothedBass) {
-                smoothedBass = activeBass; // Attack (Instant)
+            if (activeBass > state.smoothedBass) {
+                state.smoothedBass = activeBass; // Hit hard
             } else {
-                smoothedBass *= decay; // Decay (Slow)
+                state.smoothedBass *= decay; // Fade out
             }
 
-            // E. APPLY EFFECTS
-            applyEffects(smoothedBass);
+            // 5. APPLY EFFECTS
+            applyEffects(state.smoothedBass);
 
-            // F. DRAW SPECTRUM
-            drawSpectrum(data, bufferLength, smoothedBass);
+            // 6. DRAW SPECTRUM
+            drawSpectrum(data, bufferLength, state.smoothedBass);
         }
 
-        // --- 4. EFFECTS LOGIC ---
-        function applyEffects(bassPower) { // bassPower is 0.0 to 1.0
-            let scale = 1;
-            let rot = 0;
-            let expo = 0;
+        function applyEffects(bass) {
+            let s = 1, r = 0, x = 0, y = 0, exp = 0;
 
-            effects.forEach(fx => {
-                const impact = fx.intensity * bassPower;
-                
-                if (fx.type === 'zoom') scale += impact;
-                if (fx.type === 'rotate') rot += impact * 20; // 20 deg rotation
-                if (fx.type === 'exposure') expo += impact;
+            state.effects.forEach(fx => {
+                const val = fx.intensity * bass;
+                if (fx.type === 'zoom') s += val;
+                if (fx.type === 'rotate') r += val * 30;
+                if (fx.type === 'exposure') exp += val;
+                if (fx.type === 'shake') {
+                    // Random jitter based on bass
+                    x += (Math.random() - 0.5) * val * 40;
+                    y += (Math.random() - 0.5) * val * 40;
+                }
             });
 
-            // Update DOM
-            logo.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rot}deg)`;
+            // DOM Updates
+            dom.logo.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${Math.max(0, s)}) rotate(${r}deg)`;
             
-            // Exposure Handling
-            if(expo > 0) {
-                flash.style.background = 'white';
-                flash.style.opacity = Math.min(1, expo);
-            } else if (expo < 0) {
-                flash.style.background = 'black';
-                flash.style.opacity = Math.min(1, Math.abs(expo));
+            // Exposure Logic
+            if(Math.abs(exp) > 0.01) {
+                dom.flash.style.opacity = Math.min(1, Math.abs(exp));
+                dom.flash.style.background = exp > 0 ? 'white' : 'black';
             } else {
-                flash.style.opacity = 0;
+                dom.flash.style.opacity = 0;
             }
         }
 
-        function drawSpectrum(data, count, bassBump) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            // Radius grows with bass
-            const radius = 150 + (bassBump * 30); 
+        function drawSpectrum(data, count, bass) {
+            dom.ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
+            
+            const centerX = dom.canvas.width / 2;
+            const centerY = dom.canvas.height / 2;
+            const radius = 150 + (bass * 40); // Base radius + bass shake
 
-            ctx.beginPath();
+            const col1 = document.getElementById('col-1').value;
+            const col2 = document.getElementById('col-2').value;
+            const popStrength = parseFloat(document.getElementById('bass-pop').value);
+
+            dom.ctx.beginPath();
+            
             for(let i=0; i<count; i++) {
-                const val = data[i];
-                const barH = val * 0.8;
-                const rads = (i * 2 * Math.PI) / count;
+                let val = data[i];
+                let barH = val * 0.8;
+
+                // "POINTS JUMP OUT" FEATURE
+                // If this is a low frequency (bass), multiply height by popStrength
+                if (i < 8) {
+                    barH *= (1 + (bass * (popStrength - 1)));
+                }
+
+                const rads = (i * 2 * Math.PI) / count - (Math.PI / 2); // Start at top
                 
-                const x = centerX + Math.cos(rads) * (radius + barH);
-                const y = centerY + Math.sin(rads) * (radius + barH);
-                const x0 = centerX + Math.cos(rads) * radius;
-                const y0 = centerY + Math.sin(rads) * radius;
-                
-                ctx.moveTo(x0, y0);
-                ctx.lineTo(x, y);
+                const x0 = centerX + Math.cos(rads) * (radius + 5);
+                const y0 = centerY + Math.sin(rads) * (radius + 5);
+                const x1 = centerX + Math.cos(rads) * (radius + 5 + barH);
+                const y1 = centerY + Math.sin(rads) * (radius + 5 + barH);
+
+                dom.ctx.moveTo(x0, y0);
+                dom.ctx.lineTo(x1, y1);
             }
-            ctx.strokeStyle = '#ff0055';
-            ctx.lineWidth = 3;
-            ctx.stroke();
+
+            // Styling
+            const grad = dom.ctx.createLinearGradient(centerX, centerY - radius, centerX, centerY + radius);
+            grad.addColorStop(0, col1);
+            grad.addColorStop(1, col2);
+            
+            dom.ctx.strokeStyle = grad;
+            dom.ctx.lineWidth = (600 / count); // Auto-thin bars if there are many
+            dom.ctx.lineCap = 'round';
+            
+            // Glow
+            dom.ctx.shadowBlur = 10;
+            dom.ctx.shadowColor = col1;
+            
+            dom.ctx.stroke();
+            dom.ctx.shadowBlur = 0;
         }
 
-        // --- 5. UI HELPERS ---
-        function updateThresh(val) {
-            const percent = (val / 255) * 100;
-            document.getElementById('thresh-line').style.left = percent + "%";
+        // --- UI UTILS ---
+        document.getElementById('file-upload').addEventListener('change', (e) => {
+            dom.audio.src = URL.createObjectURL(e.target.files[0]);
+            dom.audio.play();
+        });
+
+        document.getElementById('img-upload').addEventListener('change', (e) => {
+            dom.logo.style.backgroundImage = `url(${URL.createObjectURL(e.target.files[0])})`;
+        });
+
+        function updateUI(val, id) { document.getElementById(id).innerText = val; }
+        
+        // Update Threshold Line visual
+        document.getElementById('threshold').addEventListener('input', (e) => {
+            const pct = (e.target.value / 255) * 100;
+            dom.threshLine.style.left = pct + '%';
+        });
+
+        function updateFFT(val) {
+            const size = Math.pow(2, val);
+            state.fftSize = size;
+            if(analyser) analyser.fftSize = size;
+            document.getElementById('lbl-fft').innerText = size / 2;
         }
 
-        window.addFx = (type) => {
-            const id = Date.now();
-            effects.push({ id, type, intensity: 0.5 });
-            renderStack();
+        function togglePanel() {
+            const p = document.getElementById('ui-panel');
+            p.classList.toggle('hidden');
+            document.getElementById('toggle-btn').innerText = p.classList.contains('hidden') ? "Show Controls" : "Hide Controls";
         }
 
-        window.removeFx = (id) => {
-            effects = effects.filter(e => e.id !== id);
-            renderStack();
-        }
-
-        window.updateFx = (id, val) => {
-            const fx = effects.find(e => e.id === id);
-            if(fx) fx.intensity = parseFloat(val);
-        }
-
+        // --- STACK MANAGER ---
         function renderStack() {
             const con = document.getElementById('stack-container');
             con.innerHTML = '';
-            effects.forEach(fx => {
-                con.innerHTML += `
-                <div class="effect-item">
-                    <div class="effect-header">
-                        <span>${fx.type.toUpperCase()}</span>
-                        <span class="remove" onclick="removeFx(${fx.id})">×</span>
-                    </div>
+            state.effects.forEach(fx => {
+                const div = document.createElement('div');
+                div.className = 'effect-card';
+                div.innerHTML = `
+                    <h4>${fx.type.toUpperCase()} <span class="remove-btn" onclick="remFx(${fx.id})">×</span></h4>
                     <input type="range" min="-2" max="2" step="0.1" value="${fx.intensity}" 
-                    oninput="updateFx(${fx.id}, this.value)">
-                </div>`;
+                        oninput="updFx(${fx.id}, this.value)">
+                    <div style="display:flex; justify-content:space-between; font-size:9px; color:#555; margin-top:2px;">
+                        <span>Invert</span><span>Normal</span>
+                    </div>
+                `;
+                con.appendChild(div);
             });
         }
+
+        window.addFx = (t) => { state.effects.push({id: Date.now(), type: t, intensity: 0.5}); renderStack(); }
+        window.remFx = (id) => { state.effects = state.effects.filter(e => e.id !== id); renderStack(); }
+        window.updFx = (id, v) => { state.effects.find(e => e.id === id).intensity = parseFloat(v); }
+        
+        renderStack(); // Init
+        
+        // Window Resize
+        window.addEventListener('resize', () => {
+            dom.canvas.width = window.innerWidth;
+            dom.canvas.height = window.innerHeight;
+        });
     </script>
 </body>
 </html>
