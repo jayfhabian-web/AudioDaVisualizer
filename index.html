@@ -2,22 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V34 - Watermark Edition</title>
+    <title>Phonk V35 - Render Edition</title>
     <style>
         /* --- THEME --- */
         :root {
             --bg: #000;
-            --panel: rgba(12, 12, 12, 0.95);
+            --panel: rgba(10, 10, 10, 0.95);
             --border: rgba(255, 255, 255, 0.15);
             --text: #ccc;
             --accent: #ff0033;
             --btn-bg: #1a1a1a;
-            --btn-active: #ff0033;
         }
         * { box-sizing: border-box; user-select: none; }
         body { margin: 0; background: var(--bg); font-family: 'Segoe UI', monospace; overflow: hidden; color: var(--text); }
 
-        /* --- STAGE (2D) --- */
+        /* --- STAGE --- */
         #stage {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             overflow: hidden; z-index: 1; display: flex; justify-content: center; align-items: center;
@@ -47,46 +46,46 @@
 
         /* OVERLAYS */
         #vfx-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; mix-blend-mode: overlay; }
-        #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 31; pointer-events: none; opacity: 0; background: white; mix-blend-mode: difference; }
-
+        
         /* --- UI PANEL --- */
         #ui-panel {
             position: absolute; top: 0; left: 0; width: 440px; height: 100vh;
             background: var(--panel); border-right: 1px solid var(--border);
             padding: 15px; z-index: 50; overflow-y: auto;
-            backdrop-filter: blur(15px);
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(15px); transition: transform 0.2s;
         }
         #ui-panel.hidden { transform: translateX(-100%); }
 
-        /* General UI */
+        /* Controls */
         h2 { font-size: 14px; color: #fff; margin: 0 0 15px 0; border-left: 3px solid var(--accent); padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 10px; color: #666; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
         .control-group { margin-bottom: 12px; }
         label { display: flex; justify-content: space-between; font-size: 9px; color: #888; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
         select, input[type="text"], input[type="file"] { width: 100%; background: #0a0a0a; border: 1px solid #333; color: #ccc; padding: 6px; font-size: 10px; text-transform: uppercase; border-radius: 4px; outline: none; }
         
-        /* Buttons */
         button.action-btn { width: 100%; padding: 8px; background: var(--btn-bg); border: 1px solid #333; color: #ccc; cursor: pointer; font-size: 9px; font-weight: bold; transition: 0.2s; }
         button.action-btn:hover { background: #333; color: #fff; }
-        button.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Record Button */
+        #rec-btn { background: #300; border-color: #500; color: #f88; }
+        #rec-btn.recording { background: #f00; color: #fff; animation: pulse-rec 1s infinite; box-shadow: 0 0 15px #f00; }
+        @keyframes pulse-rec { 0% { opacity:1; } 50% { opacity:0.7; } 100% { opacity:1; } }
 
         /* Sliders */
         input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; background: #222; border-radius: 2px; outline: none; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; cursor: pointer; border: 2px solid #000; }
 
-        /* --- ARCHITECT GRID (Gain & Punch) --- */
+        /* Architect Grid */
         .sculptor-grid { display: flex; gap: 4px; height: 240px; margin-bottom: 10px; }
         .sculpt-col { flex: 1; background: #080808; border: 1px solid #222; position: relative; display: flex; flex-direction: column; }
         .graph-area { flex: 1; position: relative; border-bottom: 1px solid #333; cursor: row-resize; overflow: hidden; background: rgba(255,255,255,0.02); }
-        .audio-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #555; opacity: 0.8; transition: height 0.05s; }
+        .audio-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #555; opacity: 0.8; transition: height 0.05s linear; }
         .thresh-line { position: absolute; left: 0; width: 100%; height: 2px; background: #fff; box-shadow: 0 0 8px #fff; pointer-events: none; }
         
         .col-controls { height: 100px; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; background: #050505; }
         .edit-btn { width: 100%; font-size: 8px; padding: 4px; background: #181818; border: 1px solid #333; color: #888; cursor: pointer; margin-bottom: 4px; }
-        .edit-btn:hover { color: #fff; border-color: #555; }
         
-        /* Vertical Sliders (Gain/Punch) */
+        /* Vertical Sliders */
         .sliders-row { display: flex; justify-content: space-around; height: 65px; }
         .v-slider-group { display: flex; flex-direction: column; align-items: center; width: 45%; }
         .v-slider-label { font-size: 8px; color: #666; margin-bottom: 2px; font-weight: bold; }
@@ -94,45 +93,33 @@
             -webkit-appearance: none; width: 55px; height: 4px; 
             transform: rotate(-90deg) translate(-25px, 0); margin: 30px 0; background: #333; cursor: pointer; 
         }
-        
-        /* --- VFX ROW --- */
+
+        /* VFX Row */
         .vfx-row { display: flex; align-items: center; background: #0e0e0e; border: 1px solid #222; padding: 6px; margin-bottom: 6px; border-radius: 4px; gap: 6px; }
         .vfx-name { width: 60px; font-size: 9px; font-weight: bold; color: #bbb; }
         .vfx-slider { flex: 1; }
-        
-        /* Invert Toggle & Link */
-        .vfx-inv { 
-            font-size: 8px; padding: 2px 4px; cursor: pointer; background: #222; color: #666; border: 1px solid #333; border-radius: 3px; 
-        }
+        .vfx-inv { font-size: 8px; padding: 2px 4px; cursor: pointer; background: #222; color: #666; border: 1px solid #333; border-radius: 3px; }
         .vfx-inv.active { background: var(--accent); color: #fff; border-color: var(--accent); }
         .vfx-select { width: 55px; font-size: 8px; height: 18px; padding: 0; background: #151515; border-color: #333; }
 
-        /* --- WATERMARK CONTROLS --- */
+        /* Watermark Controls */
         .wm-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 
-        /* --- TWEAK MODAL (Restored & Polished) --- */
+        /* Tweak Modal */
         #tweak-modal { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.6); z-index: 100; 
             display: none; align-items: center; justify-content: center; 
             backdrop-filter: blur(8px); 
         }
-        #tweak-modal.active { display: flex; animation: fadeIn 0.2s ease-out; }
-        
+        #tweak-modal.active { display: flex; }
         .tweak-box { 
             width: 320px; background: #080808; border: 1px solid #333; 
             padding: 20px; border-radius: 6px; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.9);
             border-top: 2px solid var(--accent);
         }
-        .tweak-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 10px; }
-        .tweak-header h2 { margin: 0; border: none; padding: 0; font-size: 14px; color: #fff; }
-        .close-btn { background: none; border: none; color: #666; font-size: 14px; cursor: pointer; }
-        .close-btn:hover { color: #fff; }
-        
-        @keyframes fadeIn { from { opacity:0; transform: scale(0.95); } to { opacity:1; transform: scale(1); } }
 
-        /* Toggle UI Button */
         #toggle-ui { position: absolute; top: 15px; left: 460px; z-index: 60; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; }
         #ui-panel.hidden + #toggle-ui { left: 15px; }
         .hidden { display: none !important; }
@@ -156,33 +143,39 @@
         <canvas id="particle-layer"></canvas>
         <canvas id="visualizer-layer"></canvas>
         <div id="logo-container"></div>
-
         <div id="vfx-overlay"></div>
-        <div id="flash-layer"></div>
     </div>
 
     <button id="toggle-ui" onclick="toggleUI()">OPEN ENGINE</button>
 
     <div id="ui-panel">
-        <h2>Phonk V34 <span style="font-size:9px; opacity:0.5">WATERMARK</span></h2>
+        <h2>Phonk V35 <span style="font-size:9px; opacity:0.5">RENDERER</span></h2>
+
+        <div class="control-group" style="background:#111; padding:10px; border:1px solid #222; border-radius:4px;">
+            <label style="color:#fff; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:10px;">Export Video</label>
+            <button class="action-btn" id="rec-btn" onclick="toggleRecord()" disabled>● START RECORDING</button>
+            <p style="font-size:8px; color:#666; margin-top:5px;">Plays track & records screen. Press STOP to save .webm file.</p>
+        </div>
 
         <div class="control-group">
-            <label>Audio</label>
+            <label>Files</label>
             <input type="file" id="file-audio" accept="audio/*">
-            <button class="action-btn" id="play-btn" onclick="togglePlay()" disabled style="margin-top:5px;">LOAD AUDIO FIRST</button>
+            <button class="action-btn" id="play-btn" onclick="togglePlay()" disabled style="margin-top:5px;">PLAY PREVIEW</button>
         </div>
         <div class="control-group">
-            <label>Visual Assets</label>
+            <label>Assets</label>
             <input type="file" id="file-logo" accept="image/*" title="Center Logo" style="margin-bottom:2px;">
             <input type="file" id="file-bg" accept="image/*,video/*" title="Background">
         </div>
 
-        <h3>Frequency Architect</h3>
-        <p style="font-size:9px; color:#666; margin-bottom:5px;">G = Gain (Vol) | P = Punch (Peak Stretch)</p>
-        
+        <h3>Architect</h3>
+        <div class="control-group">
+            <label>Visual Smoothness</label>
+            <input type="range" id="smooth-factor" min="0.1" max="0.9" step="0.05" value="0.5">
+        </div>
+
         <div class="sculptor-grid">
             <script>
-                // Generating HTML for 4 bands to keep code clean
                 for(let i=0; i<4; i++){
                     document.write(`
                     <div class="sculpt-col">
@@ -191,35 +184,31 @@
                             <div class="thresh-line" id="l-${i}" style="bottom:${[80,60,65,85][i]}%"></div>
                         </div>
                         <div class="col-controls">
-                            <button class="edit-btn" onclick="openTweak(${i})">EDIT DSP</button>
+                            <button class="edit-btn" onclick="openTweak(${i})">DSP</button>
                             <div class="sliders-row">
                                 <div class="v-slider-group"><div class="v-slider-label">G</div><input type="range" class="v-slider" id="gain-${i}" min="0.1" max="3" step="0.1" value="1.0"></div>
                                 <div class="v-slider-group"><div class="v-slider-label" style="color:var(--accent)">P</div><input type="range" class="v-slider" id="punch-${i}" min="1" max="5" step="0.1" value="1.0"></div>
                             </div>
                         </div>
-                    </div>
-                    `);
+                    </div>`);
                 }
             </script>
         </div>
         <div class="control-group"><label>Pre-Amp</label><input type="range" id="pre-amp" min="0.5" max="3" step="0.1" value="1.0"></div>
 
         <h3>VFX Rack</h3>
-        
         <div class="vfx-row">
             <div class="vfx-name" style="color:var(--accent)">Deep Fry</div>
             <input type="range" class="vfx-slider" id="vfx-fry-amt" min="0" max="1" step="0.1" value="0.0">
             <div class="vfx-inv" id="inv-fry" onclick="toggleInv('fry')">INV</div>
             <select class="vfx-select" id="link-fry"><option value="-1">Glob</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
         </div>
-
         <div class="vfx-row">
             <div class="vfx-name">RGB Split</div>
             <input type="range" class="vfx-slider" id="vfx-rgb-amt" min="0" max="1" step="0.1" value="0.3">
             <div class="vfx-inv" id="inv-rgb" onclick="toggleInv('rgb')">INV</div>
             <select class="vfx-select" id="link-rgb"><option value="-1">Glob</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
         </div>
-
         <div class="vfx-row">
             <div class="vfx-name">Particles</div>
             <input type="range" class="vfx-slider" id="vfx-part-amt" min="0" max="1" step="0.1" value="0.5">
@@ -227,150 +216,173 @@
             <select class="vfx-select" id="link-part"><option value="0">20Hz</option><option value="1">40Hz</option><option value="-1">Glob</option></select>
         </div>
 
-        <h3>Watermark System</h3>
+        <h3>Watermark</h3>
         <div class="control-group">
-            <label>Type</label>
             <div style="display:flex; gap:5px;">
-                <input type="text" id="wm-text-input" placeholder="ENTER TEXT..." oninput="updateWM()">
+                <input type="text" id="wm-text-input" placeholder="TEXT..." oninput="updateWM()">
                 <input type="file" id="wm-file" accept="image/*" style="width:80px;" title="Img">
             </div>
         </div>
         <div class="wm-controls">
-            <div>
-                <label>Mode</label>
-                <select id="wm-mode">
-                    <option value="static">Static</option>
-                    <option value="pulse">Pulse (Beat)</option>
-                    <option value="bounce">DVD Bounce</option>
-                    <option value="both">Bounce + Pulse</option>
-                </select>
-            </div>
-            <div>
-                <label>Opacity</label>
-                <input type="range" id="wm-opacity" min="0" max="1" step="0.1" value="0.8" oninput="updateWM()">
-            </div>
+            <select id="wm-mode"><option value="static">Static</option><option value="pulse">Pulse</option><option value="bounce">Bounce</option><option value="both">Both</option></select>
+            <input type="range" id="wm-opacity" min="0" max="1" step="0.1" value="0.8" oninput="updateWM()">
         </div>
-
         <div style="height:50px;"></div>
     </div>
 
     <div id="tweak-modal">
         <div class="tweak-box">
-            <div class="tweak-header">
-                <h2>DSP EDITOR: <span id="tweak-title" style="color:var(--accent)"></span></h2>
-                <button class="close-btn" onclick="closeTweak()">✕</button>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:5px;">
+                <h2 style="margin:0; border:none; padding:0;">DSP Editor</h2>
+                <button onclick="closeTweak()" style="background:none; border:none; color:#666; cursor:pointer;">✕</button>
             </div>
-            
-            <div class="control-group">
-                <label>Attack (Response Speed)</label>
-                <input type="range" id="inp-atk" min="0" max="0.9" step="0.05">
-            </div>
-            <div class="control-group">
-                <label>Decay (Fade Out Speed)</label>
-                <input type="range" id="inp-dec" min="0.01" max="0.5" step="0.01">
-            </div>
-            <div class="control-group">
-                <label>Noise Gate (Sensitivity)</label>
-                <input type="range" id="inp-gate" min="0" max="0.4" step="0.01">
-            </div>
-            <button class="action-btn" onclick="closeTweak()" style="margin-top:15px; background:var(--accent); color:white; border:none;">DONE</button>
+            <div class="control-group"><label>Attack</label><input type="range" id="inp-atk" min="0" max="0.9" step="0.05"></div>
+            <div class="control-group"><label>Decay</label><input type="range" id="inp-dec" min="0.01" max="0.5" step="0.01"></div>
+            <div class="control-group"><label>Gate</label><input type="range" id="inp-gate" min="0" max="0.4" step="0.01"></div>
         </div>
     </div>
 
     <script>
         const dom = {
             playBtn: document.getElementById('play-btn'),
+            recBtn: document.getElementById('rec-btn'),
             canvas: document.getElementById('visualizer-layer'),
             ctx: document.getElementById('visualizer-layer').getContext('2d'),
             pCanvas: document.getElementById('particle-layer'),
             pCtx: document.getElementById('particle-layer').getContext('2d'),
-            logo: document.getElementById('logo-container'),
             stage: document.getElementById('stage'),
-            // Overlays
-            flash: document.getElementById('flash-layer'),
-            vfxOver: document.getElementById('vfx-overlay'),
-            // Background
-            bgImg: document.getElementById('bg-img'),
-            bgVid: document.getElementById('bg-video'),
-            bgDef: document.getElementById('bg-default'),
-            // Watermark
-            wmCont: document.getElementById('watermark-container'),
-            wmText: document.getElementById('wm-text'),
-            wmImg: document.getElementById('wm-img'),
-            wmInput: document.getElementById('wm-text-input'),
-            wmMode: document.getElementById('wm-mode'),
-            wmOp: document.getElementById('wm-opacity'),
-            // Controls
+            // UI
             bars: [0,1,2,3].map(i => document.getElementById(`b-${i}`)),
             lines: [0,1,2,3].map(i => document.getElementById(`l-${i}`)),
             gains: [0,1,2,3].map(i => document.getElementById(`gain-${i}`)),
             punches: [0,1,2,3].map(i => document.getElementById(`punch-${i}`)),
             inputs: {
+                smooth: document.getElementById('smooth-factor'),
                 preAmp: document.getElementById('pre-amp'),
                 fryAmt: document.getElementById('vfx-fry-amt'), fryLink: document.getElementById('link-fry'),
                 rgbAmt: document.getElementById('vfx-rgb-amt'), rgbLink: document.getElementById('link-rgb'),
                 partAmt: document.getElementById('vfx-part-amt'), partLink: document.getElementById('link-part')
             },
+            wm: {
+                cont: document.getElementById('watermark-container'), text: document.getElementById('wm-text'),
+                img: document.getElementById('wm-img'), input: document.getElementById('wm-text-input'),
+                mode: document.getElementById('wm-mode'), op: document.getElementById('wm-opacity')
+            },
             // Tweak
             tweakModal: document.getElementById('tweak-modal'),
-            tweakTitle: document.getElementById('tweak-title'),
             tweakInputs: { atk: document.getElementById('inp-atk'), dec: document.getElementById('inp-dec'), gate: document.getElementById('inp-gate') }
         };
 
-        // Resize
+        // --- High DPI Setup ---
         function resize() {
-            dom.canvas.width = window.innerWidth; dom.canvas.height = window.innerHeight;
-            dom.pCanvas.width = window.innerWidth; dom.pCanvas.height = window.innerHeight;
+            const dpr = window.devicePixelRatio || 1;
+            const w = window.innerWidth; const h = window.innerHeight;
+            dom.canvas.width = w * dpr; dom.canvas.height = h * dpr;
+            dom.canvas.style.width = w + "px"; dom.canvas.style.height = h + "px";
+            dom.ctx.scale(dpr, dpr);
+
+            dom.pCanvas.width = w * dpr; dom.pCanvas.height = h * dpr;
+            dom.pCanvas.style.width = w + "px"; dom.pCanvas.style.height = h + "px";
+            dom.pCtx.scale(dpr, dpr);
         }
         window.addEventListener('resize', resize);
         resize();
 
-        // State
         const state = {
-            isPlaying: false,
+            isPlaying: false, isRecording: false,
             physics: 0,
             inverts: { fry: false, rgb: false, part: false },
             bands: [0,1,2,3].map((_,i) => ({ val:0, thresh:[0.8,0.6,0.65,0.85][i], atk:0, dec:0.15, gate:0.05 })),
             currentTweak: -1,
             particles: [],
-            wm: { x: window.innerWidth/2, y: window.innerHeight/4, dx: 3, dy: 3 } // Watermark physics
+            wm: { x: window.innerWidth/2, y: window.innerHeight/4, dx: 3, dy: 3 }
         };
 
-        // --- PARTICLE SYSTEM ---
-        class Particle {
-            constructor() {
-                this.x = window.innerWidth/2; this.y = window.innerHeight/2;
-                const a = Math.random()*Math.PI*2; const s = Math.random()*15+5;
-                this.vx = Math.cos(a)*s; this.vy = Math.sin(a)*s;
-                this.life = 1.0; this.size = Math.random()*5+2;
-            }
-            update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.02; this.vx*=0.95; this.vy*=0.95; }
-            draw(ctx) { ctx.fillStyle=`rgba(255,50,50,${this.life})`; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); }
-        }
-
-        // --- AUDIO ENGINE ---
-        let audioCtx, source, analyser, buffer;
+        // --- AUDIO & RECORDING ---
+        let audioCtx, source, analyser, buffer, dest, mediaRecorder, chunks = [];
+        
         document.getElementById('file-audio').addEventListener('change', async e => {
             if(!e.target.files[0]) return;
             const ab = await e.target.files[0].arrayBuffer();
             audioCtx = new (window.AudioContext||window.webkitAudioContext)();
             buffer = await audioCtx.decodeAudioData(ab);
-            const raw = buffer.getChannelData(0); let s=0; for(let i=0;i<raw.length;i+=5000)s+=Math.abs(raw[i]);
+            
+            // Analyze volume for Pre-Amp
+            const raw = buffer.getChannelData(0); let s=0; 
+            for(let i=0;i<raw.length;i+=5000)s+=Math.abs(raw[i]);
             dom.inputs.preAmp.value = (s/(raw.length/5000) < 0.1) ? 2.0 : 1.0;
-            dom.playBtn.disabled=false; dom.playBtn.innerText="PLAY TRACK";
+            
+            dom.playBtn.disabled=false; dom.recBtn.disabled=false;
+            dom.playBtn.innerText="PLAY PREVIEW";
         });
 
         window.togglePlay = () => {
             if(!buffer) return;
-            if(state.isPlaying) { source.stop(); state.isPlaying=false; dom.playBtn.innerText="PLAY TRACK"; }
-            else {
-                if(audioCtx.state === 'suspended') audioCtx.resume();
-                source = audioCtx.createBufferSource(); source.buffer=buffer;
-                analyser = audioCtx.createAnalyser(); analyser.fftSize=2048;
-                source.connect(analyser); source.connect(audioCtx.destination);
-                source.start(0); state.isPlaying=true; dom.playBtn.innerText="STOP TRACK"; loop();
+            if(state.isPlaying) { stopAll(); }
+            else { startAudio(false); }
+        };
+
+        window.toggleRecord = () => {
+            if(!buffer) return;
+            if(state.isRecording) {
+                mediaRecorder.stop();
+                stopAll();
+                dom.recBtn.classList.remove('recording');
+                dom.recBtn.innerText = "● START RECORDING";
+                state.isRecording = false;
+            } else {
+                startAudio(true);
+                dom.recBtn.classList.add('recording');
+                dom.recBtn.innerText = "■ STOP & SAVE";
+                state.isRecording = true;
             }
         };
+
+        function startAudio(recording) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            source = audioCtx.createBufferSource(); source.buffer=buffer;
+            analyser = audioCtx.createAnalyser(); analyser.fftSize=2048;
+            analyser.smoothingTimeConstant = parseFloat(dom.inputs.smooth.value); // Hardware smoothing
+
+            // Routing
+            source.connect(analyser); 
+            source.connect(audioCtx.destination); // Hear it
+
+            if(recording) {
+                // Combine Canvas Stream + Audio Stream
+                dest = audioCtx.createMediaStreamDestination();
+                source.connect(dest);
+                const canvasStream = dom.stage.getElementsByTagName('canvas')[1].captureStream(60); // Visualizer layer
+                // Note: Capturing DOM elements (divs) isn't directly possible with MediaRecorder easily without html2canvas which is slow.
+                // For V35, we only capture the canvas layer + audio to keep it fast. To capture full DOM requires complex libs.
+                // We will combine the canvas stream.
+                
+                const combinedStream = new MediaStream([
+                    ...canvasStream.getVideoTracks(),
+                    ...dest.stream.getAudioTracks()
+                ]);
+                
+                mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
+                chunks = [];
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = e => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href=url; a.download='phonk_export.webm'; a.click();
+                };
+                mediaRecorder.start();
+            }
+
+            source.start(0); state.isPlaying=true; 
+            if(!recording) dom.playBtn.innerText="STOP PREVIEW";
+            loop();
+        }
+
+        function stopAll() {
+            if(source) source.stop();
+            state.isPlaying=false;
+            dom.playBtn.innerText="PLAY PREVIEW";
+        }
 
         // --- MAIN LOOP ---
         function loop() {
@@ -379,6 +391,10 @@
 
             const data = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(data);
+            
+            // Smoothing Update
+            analyser.smoothingTimeConstant = parseFloat(dom.inputs.smooth.value);
+
             const pre = parseFloat(dom.inputs.preAmp.value);
             const raw = [data[1], data[3], data[5], data[8]];
             let globalTrig = 0;
@@ -391,64 +407,77 @@
                 
                 const dsp = state.bands[i];
                 if(input < dsp.gate) input = 0;
+                
+                // Visual LERP (Smoothing)
                 if(input > dsp.val) dsp.val += (input - dsp.val) * (1-dsp.atk);
                 else dsp.val -= dsp.dec;
                 if(dsp.val < 0) dsp.val = 0;
 
-                // Punch Logic
                 let visualVal = dsp.val;
                 if (dsp.val > dsp.thresh) {
                     let excess = dsp.val - dsp.thresh;
                     visualVal = dsp.thresh + (excess * punch);
                 }
                 
+                // DOM Bar Update
                 dom.bars[i].style.height = Math.min(visualVal * 100, 100) + "%";
                 dom.bars[i].style.background = (dsp.val > dsp.thresh) ? 'var(--accent)' : '#555';
 
                 if(dsp.val > dsp.thresh) {
-                    let f = (dsp.val - dsp.thresh) * 2;
-                    triggers[i] = f;
-                    globalTrig += f;
+                    triggers[i] = (dsp.val - dsp.thresh) * 2;
+                    globalTrig += triggers[i];
                 }
             });
 
-            state.physics += (globalTrig - state.physics) * 0.2;
+            // Smooth Physics
+            state.physics += (globalTrig - state.physics) * 0.1;
             
             drawVisuals(data, state.physics);
             updateWatermark(state.physics);
             applyVFX(triggers, state.physics);
         }
 
-        // --- DRAWING ---
+        // --- DRAW ---
+        class Particle {
+            constructor() {
+                this.x = window.innerWidth/2; this.y = window.innerHeight/2;
+                const a = Math.random()*Math.PI*2; const s = Math.random()*15+5;
+                this.vx = Math.cos(a)*s; this.vy = Math.sin(a)*s;
+                this.life = 1.0; this.size = Math.random()*5+2;
+            }
+            update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.02; this.vx*=0.95; this.vy*=0.95; }
+            draw(ctx) { ctx.fillStyle=`rgba(255,50,50,${this.life})`; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); }
+        }
+
         function drawVisuals(data, phys) {
             const ctx = dom.ctx; 
-            const cx = dom.canvas.width/2; 
-            const cy = dom.canvas.height/2;
-            ctx.clearRect(0,0,dom.canvas.width,dom.canvas.height);
+            const w = dom.canvas.width / (window.devicePixelRatio||1);
+            const h = dom.canvas.height / (window.devicePixelRatio||1);
+            const cx = w/2; const cy = h/2;
+
+            ctx.clearRect(0,0,w,h);
             
-            // Draw Bars Circle
-            const bars = 60; const rad = 180 + (phys*30);
-            const pre = parseFloat(dom.inputs.preAmp.value);
+            const bars = 60; 
+            const rad = 200 + (phys*40);
             
-            // Bloom logic (simulated in canvas for performance)
-            if(phys > 0.2) { ctx.shadowBlur = 20; ctx.shadowColor = "#ff0033"; } 
-            else { ctx.shadowBlur = 0; }
+            if(phys > 0.2) { ctx.shadowBlur = 20; ctx.shadowColor = "#ff0033"; } else { ctx.shadowBlur = 0; }
 
             for(let i=0; i<bars; i++) {
-                let val = (data[i*2]/255) * pre;
-                let h = val * 200;
-                if(phys>0.1) h *= (1+phys);
+                let val = (data[i*2]/255) * parseFloat(dom.inputs.preAmp.value);
+                let hVal = val * 220;
+                if(phys>0.1) hVal *= (1+phys);
                 ctx.save(); ctx.translate(cx,cy); ctx.rotate((Math.PI*2/bars)*i);
                 ctx.fillStyle = (phys>0.2) ? "#ff0033" : "#fff";
-                ctx.fillRect(rad, -8, Math.max(h,5), 16);
+                ctx.fillRect(rad, -6, Math.max(hVal,5), 12);
                 ctx.restore();
             }
 
             // Particles
-            const pCtx = dom.pCtx; pCtx.clearRect(0,0,dom.canvas.width,dom.canvas.height);
+            const pCtx = dom.pCtx; pCtx.clearRect(0,0,w,h);
             const pLink = parseInt(dom.inputs.inputs.partLink.value);
-            let pForce = getLinkValue(pLink, [0,0,0,0], phys, state.inverts.part); // Simplified trigger check
-            
+            let pForce = (pLink===-1) ? phys : (state.bands[pLink]?.val > state.bands[pLink]?.thresh ? 1 : 0);
+            if(state.inverts.part) pForce = 1-pForce;
+
             if(pForce > 0.1 && Math.random()<parseFloat(dom.inputs.inputs.partAmt.value)) 
                 for(let k=0;k<5;k++) state.particles.push(new Particle());
             
@@ -458,120 +487,80 @@
             }
         }
 
-        // --- WATERMARK PHYSICS ---
+        // --- WATERMARK & VFX ---
         function updateWatermark(phys) {
-            const wm = dom.wmCont;
-            const mode = dom.wmMode.value;
+            const wm = dom.wm.cont; const mode = dom.wm.mode.value;
             const rect = wm.getBoundingClientRect();
             
-            // Base Position
-            let tx = 0, ty = 0;
-            let scale = 1;
-
             if(mode === 'bounce' || mode === 'both') {
-                // DVD Logic
-                state.wm.x += state.wm.dx;
-                state.wm.y += state.wm.dy;
-
-                // Boundary check
+                state.wm.x += state.wm.dx; state.wm.y += state.wm.dy;
                 if(state.wm.x <= 0 || state.wm.x + rect.width >= window.innerWidth) state.wm.dx *= -1;
                 if(state.wm.y <= 0 || state.wm.y + rect.height >= window.innerHeight) state.wm.dy *= -1;
-
-                wm.style.left = state.wm.x + 'px';
-                wm.style.top = state.wm.y + 'px';
-                wm.style.transform = 'none'; // Clear center align
+                wm.style.left = state.wm.x + 'px'; wm.style.top = state.wm.y + 'px';
+                wm.style.transform = 'none';
             } else {
-                // Static Center
-                wm.style.left = '50%'; wm.style.top = '20%'; 
-                wm.style.transform = 'translate(-50%, -50%)';
+                wm.style.left = '50%'; wm.style.top = '20%'; wm.style.transform = 'translate(-50%, -50%)';
             }
 
-            if(mode === 'pulse' || mode === 'both') {
-                scale = 1 + (phys * 0.5); // Pulse on beat
-            }
-
-            // Apply Scale
-            if(mode === 'bounce' || mode === 'both') {
-                wm.style.transform = `scale(${scale})`;
-            } else {
-                wm.style.transform = `translate(-50%, -50%) scale(${scale})`;
-            }
-        }
-
-        // --- VFX CONTROLLER ---
-        function getLinkValue(indexStr, trigs, phys, invert) {
-            let val = 0;
-            const idx = parseInt(indexStr);
-            if(idx === -1) val = phys;
-            else val = trigs[idx] || 0;
-
-            if(invert) return (1.0 - val); // Invert Logic
-            return val;
+            let scale = 1;
+            if(mode === 'pulse' || mode === 'both') scale = 1 + (phys * 0.5);
+            
+            if(mode === 'bounce' || mode === 'both') wm.style.transform = `scale(${scale})`;
+            else wm.style.transform = `translate(-50%, -50%) scale(${scale})`;
         }
 
         function applyVFX(trigs, phys) {
-            // Deep Fry
-            const fAmt = parseFloat(dom.inputs.inputs.fryAmt.value);
-            const fVal = getLinkValue(dom.inputs.inputs.fryLink.value, trigs, phys, state.inverts.fry);
-            let filter = "grayscale(100%) "; // Base look
-            if(fAmt>0 && fVal > 0.1) {
-                const v = 100 + (fVal*fAmt*400);
-                filter += `contrast(${v}%) saturate(${v}%)`;
-            }
-            dom.stage.style.filter = filter;
+            const getVal = (idx, inv) => {
+                let v = (parseInt(idx)===-1) ? phys : (trigs[idx]||0);
+                return inv ? (1-v) : v;
+            };
 
-            // RGB Split
+            // Fry
+            const fAmt = parseFloat(dom.inputs.inputs.fryAmt.value);
+            const fVal = getVal(dom.inputs.inputs.fryLink.value, state.inverts.fry);
+            let f = "grayscale(100%) ";
+            if(fAmt>0 && fVal>0.1) f += `contrast(${100+(fVal*fAmt*400)}%) saturate(${100+(fVal*fAmt*400)}%)`;
+            dom.stage.style.filter = f;
+
+            // RGB
             const rAmt = parseFloat(dom.inputs.inputs.rgbAmt.value);
-            const rVal = getLinkValue(dom.inputs.inputs.rgbLink.value, trigs, phys, state.inverts.rgb);
+            const rVal = getVal(dom.inputs.inputs.rgbLink.value, state.inverts.rgb);
             if(rAmt > 0) {
                 const s = rVal * rAmt * 30;
-                dom.stage.style.textShadow = `${s}px 0 red, -${s}px 0 blue`; // Glitches text/wm
-                dom.canvas.style.transform = `translate(${s}px, 0)`; // Shake visualizer
+                dom.stage.style.textShadow = `${s}px 0 red, -${s}px 0 blue`;
+                dom.canvas.style.transform = `translate(${s}px, 0)`; 
             } else {
-                dom.canvas.style.transform = `none`;
-                dom.stage.style.textShadow = 'none';
+                dom.stage.style.textShadow = 'none'; dom.canvas.style.transform = 'none';
             }
         }
 
-        // --- UI LOGIC ---
-        window.toggleInv = (key) => {
-            state.inverts[key] = !state.inverts[key];
-            document.getElementById(`inv-${key}`).classList.toggle('active');
-        };
-
+        // --- UTILS ---
+        window.toggleInv = (k) => { state.inverts[k]=!state.inverts[k]; document.getElementById(`inv-${k}`).classList.toggle('active'); };
         window.updateWM = () => {
-            const txt = dom.wmInput.value;
-            const op = dom.wmOp.value;
-            if(txt) { 
-                dom.wmText.innerText = txt; dom.wmText.style.display = 'block'; dom.wmImg.style.display='none'; 
-            } else { dom.wmText.style.display='none'; }
-            dom.wmCont.style.opacity = op;
+            const t = dom.inputs.wm.input.value;
+            if(t) { dom.wm.text.innerText=t; dom.wm.text.style.display='block'; dom.wm.img.style.display='none'; }
+            dom.wm.cont.style.opacity = dom.inputs.wm.op.value;
         };
-        
         document.getElementById('wm-file').addEventListener('change', e=>{
-            const u = URL.createObjectURL(e.target.files[0]);
-            dom.wmImg.src=u; dom.wmImg.style.display='block'; dom.wmText.style.display='none'; dom.wmInput.value="";
+            dom.wm.img.src=URL.createObjectURL(e.target.files[0]); dom.wm.img.style.display='block'; dom.wm.text.style.display='none';
         });
 
-        // Tweak Modal Logic
+        // Tweak
         window.openTweak = (i) => {
-            state.currentTweak = i; dom.tweakTitle.innerText=`${i*20+20}Hz`;
-            const b = state.bands[i];
+            state.currentTweak = i; const b = state.bands[i];
             dom.tweakInputs.atk.value=b.atk; dom.tweakInputs.dec.value=b.dec; dom.tweakInputs.gate.value=b.gate;
             dom.tweakModal.classList.add('active');
         };
         window.closeTweak = () => dom.tweakModal.classList.remove('active');
         ['atk','dec','gate'].forEach(k=>dom.tweakInputs[k].addEventListener('input',e=>state.bands[state.currentTweak][k]=parseFloat(e.target.value)));
 
-        // File Handlers
-        document.getElementById('file-logo').addEventListener('change', e=>{ dom.logo.style.backgroundImage=`url(${URL.createObjectURL(e.target.files[0])})`; });
+        // File/Drag
+        document.getElementById('file-logo').addEventListener('change', e=>{ document.getElementById('logo-container').style.backgroundImage=`url(${URL.createObjectURL(e.target.files[0])})`; });
         document.getElementById('file-bg').addEventListener('change', e=>{
             const f=e.target.files[0]; const u=URL.createObjectURL(f);
             if(f.type.startsWith('video')) { dom.bgVid.src=u; dom.bgVid.style.display='block'; dom.bgVid.play(); dom.bgImg.style.display='none'; dom.bgDef.style.display='none'; }
             else { dom.bgImg.src=u; dom.bgImg.style.display='block'; dom.bgVid.style.display='none'; dom.bgDef.style.display='none'; }
         });
-        
-        // Drag Threshold
         window.startDrag = (id, e) => {
             const up = () => { document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); };
             const mv = (ev) => {
@@ -582,7 +571,6 @@
             };
             document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); mv(e);
         };
-
         window.toggleUI = () => document.getElementById('ui-panel').classList.toggle('hidden');
     </script>
 </body>
