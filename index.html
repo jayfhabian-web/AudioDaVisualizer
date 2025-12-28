@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk Engine V42 - Render Edition</title>
+    <title>Phonk Engine V43 - Complete Edition</title>
     <style>
         /* --- CORE STYLES --- */
         :root { --bg: #050505; --panel: #111; --accent: #ff0033; --text: #ccc; }
@@ -17,21 +17,35 @@
         }
         canvas.vis-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
+        /* ARCHITECT PANEL (Restored) */
+        #architect-panel {
+            position: absolute; left: 10px; top: 10px; width: 220px;
+            background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #333; z-index: 10;
+        }
+        .arch-col { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+        .arch-row { display: flex; gap: 5px; align-items: flex-end; height: 80px; }
+        .bar-wrap { flex: 1; background: #000; position: relative; border: 1px solid #333; height: 100%; }
+        .bar-fill { position: absolute; bottom: 0; width: 100%; background: var(--accent); transition: height 0.05s; }
+        input[type="range"] { width: 100%; height: 4px; background: #333; -webkit-appearance: none; margin: 5px 0; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; background: #aaa; border-radius: 50%; cursor: pointer; }
+        label { font-size: 9px; color: #888; text-transform: uppercase; }
+
+        /* CONTROLS (Right) */
         #top-controls {
             position: absolute; top: 10px; right: 10px; z-index: 10;
             background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #333;
             display: flex; gap: 10px;
         }
-        
+
         /* EXPORT OVERLAY */
         #render-status {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9); padding: 20px; border: 2px solid var(--accent);
-            z-index: 1000; text-align: center; display: none;
+            background: rgba(0,0,0,0.95); padding: 30px; border: 2px solid var(--accent);
+            z-index: 1000; text-align: center; display: none; box-shadow: 0 0 50px #000;
         }
 
         /* --- TIMELINE --- */
-        #timeline-area { height: 260px; background: #0e0e0e; border-top: 1px solid #333; display: flex; flex-direction: column; z-index: 20; }
+        #timeline-area { height: 280px; background: #0e0e0e; border-top: 1px solid #333; display: flex; flex-direction: column; z-index: 20; }
         
         #toolbar {
             height: 40px; background: #151515; display: flex; align-items: center; padding: 0 10px; gap: 10px; border-bottom: 1px solid #222;
@@ -42,9 +56,8 @@
         .btn:hover { background: #333; color: #fff; }
         .btn.active-tool { background: var(--accent); color: #fff; border-color: var(--accent); }
         
-        /* The Canvas Container handles scrolling */
         #timeline-scroll { flex: 1; overflow-x: auto; overflow-y: hidden; position: relative; background: #080808; }
-        #tl-canvas { display: block; height: 100%; }
+        #tl-canvas { display: block; height: 100%; cursor: crosshair; }
 
         /* POPUP EDITOR */
         #block-editor {
@@ -63,6 +76,38 @@
         <canvas id="c-vis" class="vis-layer"></canvas>
         <canvas id="c-fx" class="vis-layer" style="mix-blend-mode: screen;"></canvas>
         
+        <div id="architect-panel">
+            <strong style="color:#fff; font-size:11px; display:block; margin-bottom:5px;">AUDIO ARCHITECT</strong>
+            <div class="arch-row">
+                <div class="arch-col" style="flex:1">
+                    <div class="bar-wrap"><div class="bar-fill" id="fill-0"></div></div>
+                    <label>Sub</label>
+                </div>
+                <div class="arch-col" style="flex:1">
+                    <div class="bar-wrap"><div class="bar-fill" id="fill-1"></div></div>
+                    <label>Low</label>
+                </div>
+                <div class="arch-col" style="flex:1">
+                    <div class="bar-wrap"><div class="bar-fill" id="fill-2"></div></div>
+                    <label>Mid</label>
+                </div>
+                <div class="arch-col" style="flex:1">
+                    <div class="bar-wrap"><div class="bar-fill" id="fill-3"></div></div>
+                    <label>High</label>
+                </div>
+            </div>
+            <div style="margin-top:5px; display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:5px;">
+                <input type="range" id="g-0" min="0" max="3" step="0.1" value="1.2" title="Sub Gain">
+                <input type="range" id="g-1" min="0" max="3" step="0.1" value="1.0" title="Low Gain">
+                <input type="range" id="g-2" min="0" max="3" step="0.1" value="1.0" title="Mid Gain">
+                <input type="range" id="g-3" min="0" max="3" step="0.1" value="1.5" title="High Gain">
+            </div>
+            <div class="ed-row" style="margin-top:10px;">
+                <label>Master Size</label>
+                <input type="range" id="vis-scale" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+        </div>
+
         <div id="top-controls">
             <button class="btn" id="btn-load">📂 LOAD AUDIO</button>
             <input type="file" id="inp-file" style="display:none" accept="audio/*">
@@ -74,9 +119,9 @@
         </div>
 
         <div id="render-status">
-            <h2 style="margin:0 0 10px 0; color:var(--accent)">RENDERING...</h2>
-            <div style="font-size:12px; color:#aaa;">Please wait. Do not switch tabs.</div>
-            <div id="render-prog" style="font-size:20px; font-weight:bold; margin-top:10px;">0%</div>
+            <h2 style="margin:0 0 10px 0; color:var(--accent)">RENDERING VIDEO</h2>
+            <div style="font-size:12px; color:#aaa; margin-bottom:10px;">Do not close this tab.</div>
+            <div id="render-prog" style="font-size:24px; font-weight:bold; color:#fff;">0%</div>
         </div>
     </div>
 
@@ -94,6 +139,7 @@
                 <span style="font-size:10px; color:#666;">DRAG:</span>
                 <div class="btn" draggable="true" ondragstart="dragStart(event, 'shake')">Shake</div>
                 <div class="btn" draggable="true" ondragstart="dragStart(event, 'flash')">Flash</div>
+                <div class="btn" draggable="true" ondragstart="dragStart(event, 'invert')">Invert</div>
                 <div class="btn" draggable="true" ondragstart="dragStart(event, 'glitch')">Glitch</div>
             </div>
         </div>
@@ -104,7 +150,7 @@
         
         <div id="block-editor">
             <div style="display:flex; justify-content:space-between;">
-                <strong style="color:var(--accent)">EDIT</strong>
+                <strong style="color:var(--accent)">EDIT BLOCK</strong>
                 <button onclick="closeEditor()" style="background:none; border:none; color:#666; cursor:pointer;">x</button>
             </div>
             <div class="ed-row">
@@ -124,7 +170,7 @@
     </div>
 
     <script>
-        // --- HISTORY MODULE ---
+        // --- HISTORY & STATE ---
         const history = {
             past: [], future: [],
             save: () => {
@@ -133,20 +179,19 @@
                 history.future = [];
             },
             undo: () => {
-                if(history.past.length === 0) return;
+                if(!history.past.length) return;
                 history.future.push(JSON.stringify(state.blocks));
                 state.blocks = JSON.parse(history.past.pop());
                 redrawTimelineLayer();
             },
             redo: () => {
-                if(history.future.length === 0) return;
+                if(!history.future.length) return;
                 history.past.push(JSON.stringify(state.blocks));
                 state.blocks = JSON.parse(history.future.pop());
                 redrawTimelineLayer();
             }
         };
 
-        // --- STATE MODULE ---
         const state = {
             ctx: null, buf: null, src: null, anal: null,
             play: false, start: 0, pause: 0, dur: 0,
@@ -154,46 +199,49 @@
             blocks: [], 
             tool: 'sel', 
             dragObj: null, dragMode: null, selBlock: null,
-            
-            // Caching
             cacheCanvas: document.createElement('canvas'),
-            
-            // Rendering
-            isRendering: false,
-            mediaRecorder: null,
-            chunks: []
+            isRendering: false, mediaRecorder: null, chunks: [],
+            visScale: 1.0,
+            arch: [0,0,0,0] // Band values
         };
 
         const cvs = { tl: document.getElementById('tl-canvas'), vis: document.getElementById('c-vis'), fx: document.getElementById('c-fx') };
         const ctx = { tl: cvs.tl.getContext('2d'), vis: cvs.vis.getContext('2d'), fx: cvs.fx.getContext('2d') };
 
-        // --- INIT ---
+        // --- EASING ---
+        const Easing = {
+            linear: t => t,
+            inQuad: t => t*t,
+            outQuad: t => t*(2-t),
+            bounce: t => {
+                if (t < (1/2.75)) return 7.5625*t*t;
+                else if (t < (2/2.75)) return 7.5625*(t-=(1.5/2.75))*t + .75;
+                else if (t < (2.5/2.75)) return 7.5625*(t-=(2.25/2.75))*t + .9375;
+                else return 7.5625*(t-=(2.625/2.75))*t + .984375;
+            }
+        };
+
         function init() {
             resize(); window.onresize = resize;
             
-            // File Load
             document.getElementById('btn-load').onclick = () => document.getElementById('inp-file').click();
             document.getElementById('inp-file').onchange = async (e) => {
                 const ab = await e.target.files[0].arrayBuffer();
                 state.ctx = new (window.AudioContext||window.webkitAudioContext)();
                 state.buf = await state.ctx.decodeAudioData(ab);
                 state.dur = state.buf.duration;
-                
-                // Init Dimensions
                 cvs.tl.width = state.cacheCanvas.width = state.dur * state.zoom;
                 cvs.tl.height = state.cacheCanvas.height = document.getElementById('timeline-scroll').clientHeight;
-                
-                renderStaticWaveform(); // Cache it
+                renderStaticWaveform(); 
                 redrawTimelineLayer();
             };
 
-            // Controls
             document.getElementById('btn-play').onclick = () => togglePlay();
             document.getElementById('btn-undo').onclick = history.undo;
             document.getElementById('btn-redo').onclick = history.redo;
             document.getElementById('btn-export').onclick = startExport;
+            document.getElementById('vis-scale').oninput = (e) => state.visScale = parseFloat(e.target.value);
 
-            // Tools
             ['sel', 'split', 'del'].forEach(t => {
                 document.getElementById(`tool-${t}`).onclick = (e) => {
                     document.querySelectorAll('.active-tool').forEach(b=>b.classList.remove('active-tool'));
@@ -201,7 +249,6 @@
                     state.tool = t;
                 };
             });
-
             setupTimelineInteraction();
             loop();
         }
@@ -211,319 +258,265 @@
             cvs.vis.height = cvs.fx.height = document.getElementById('viewport').clientHeight;
         }
 
-        // --- AUDIO ENGINE ---
         function togglePlay(forceTime = null) {
             if(state.isRendering) return;
-
             if(state.play) {
-                // STOP
                 if(state.src) state.src.stop();
                 state.play = false;
                 state.pause = state.ctx.currentTime - state.start;
                 document.getElementById('btn-play').innerText = "▶ PLAY";
-                
-                // If forced seek while playing
-                if(forceTime !== null) {
-                    state.pause = forceTime;
-                    togglePlay(); // Restart immediately at new time
-                }
+                if(forceTime !== null) { state.pause = forceTime; togglePlay(); }
             } else {
-                // START
                 state.src = state.ctx.createBufferSource();
                 state.src.buffer = state.buf;
                 state.anal = state.ctx.createAnalyser();
+                state.anal.fftSize = 2048; // High res for visualizer
                 state.src.connect(state.anal);
                 state.src.connect(state.ctx.destination);
-                
-                // If seeking while paused
                 if(forceTime !== null) state.pause = forceTime;
-
                 state.start = state.ctx.currentTime - state.pause;
                 state.src.start(0, state.pause);
                 state.play = true;
                 document.getElementById('btn-play').innerText = "⏸ STOP";
             }
-            redrawTimelineLayer();
         }
 
-        // --- EXPORT RENDERER ---
         function startExport() {
             if(!state.buf || state.isRendering) return;
             state.isRendering = true;
             document.getElementById('render-status').style.display = 'block';
 
-            // 1. Setup Stream
-            const stream = cvs.vis.captureStream(60); // 60 FPS
-            
-            // 2. Setup Audio Dest
+            const stream = cvs.vis.captureStream(60);
             const dest = state.ctx.createMediaStreamDestination();
             state.src = state.ctx.createBufferSource();
             state.src.buffer = state.buf;
             state.anal = state.ctx.createAnalyser();
-            state.src.connect(state.anal);     // To Visualizer
-            state.src.connect(dest);           // To Recorder
-            state.src.connect(state.ctx.destination); // To Speaker (Monitoring)
+            state.anal.fftSize = 2048;
+            state.src.connect(state.anal);
+            state.src.connect(dest);
+            state.src.connect(state.ctx.destination); // Monitor audio
 
-            // 3. Add Audio Track to Video Stream
-            const audioTrack = dest.stream.getAudioTracks()[0];
-            stream.addTrack(audioTrack);
+            const track = dest.stream.getAudioTracks()[0];
+            stream.addTrack(track);
 
-            // 4. Recorder
             state.chunks = [];
-            state.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
-            
-            state.mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) state.chunks.push(e.data);
-            };
-            
+            state.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9', videoBitsPerSecond: 5000000 });
+            state.mediaRecorder.ondataavailable = e => { if(e.data.size>0) state.chunks.push(e.data); };
             state.mediaRecorder.onstop = () => {
                 const blob = new Blob(state.chunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'phonk_visualizer.webm';
-                a.click();
-                
-                // Cleanup
+                const a = document.createElement('a'); a.href = url; a.download = 'phonk_render.webm'; a.click();
                 state.isRendering = false;
                 document.getElementById('render-status').style.display = 'none';
-                state.play = false;
-                document.getElementById('btn-play').innerText = "▶ PLAY";
+                state.play = false; document.getElementById('btn-play').innerText = "▶ PLAY";
             };
 
-            // 5. Start
             state.mediaRecorder.start();
             state.start = state.ctx.currentTime;
-            state.src.start(0); // Play from start
+            state.src.start(0);
             state.play = true;
-
-            // 6. Stop when done
-            state.src.onended = () => {
-                state.mediaRecorder.stop();
-            };
+            state.src.onended = () => state.mediaRecorder.stop();
         }
 
-        // --- TIMELINE INTERACTION ---
-        function setupTimelineInteraction() {
-            let startX=0, origStart=0, origDur=0;
-
-            cvs.tl.onmousedown = (e) => {
-                if(!state.buf || state.isRendering) return;
-                
-                const rect = cvs.tl.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const t = x / state.zoom;
-                
-                // Hit Test
-                const hit = state.blocks.find(b => t >= b.start && t <= b.start + b.dur);
-                
-                // ACTION: SEEKING (If no block clicked OR tool isn't Select/Split/Del)
-                // Actually, if we click empty space, we ALWAYS seek.
-                if(!hit) {
-                    togglePlay(t); // Seek to t
-                    return;
-                }
-
-                // If we hit a block...
-                history.save();
-
-                if(state.tool === 'del') {
-                    state.blocks = state.blocks.filter(b => b !== hit);
-                    redrawTimelineLayer();
-                    return;
-                }
-                
-                if(state.tool === 'split') {
-                    const offset = t - hit.start;
-                    const newDur = hit.dur - offset;
-                    hit.dur = offset;
-                    const newBlock = { ...hit, id: Date.now(), start: t, dur: newDur };
-                    state.blocks.push(newBlock);
-                    redrawTimelineLayer();
-                    return;
-                }
-
-                if(state.tool === 'sel') {
-                    state.selBlock = hit;
-                    openEditor(hit, e.clientX, e.clientY);
-                    
-                    const pxStart = hit.start * state.zoom;
-                    const pxEnd = (hit.start + hit.dur) * state.zoom;
-                    
-                    if(Math.abs(x - pxStart) < 10) { state.dragMode = 'resize-l'; state.dragObj = hit; }
-                    else if(Math.abs(x - pxEnd) < 10) { state.dragMode = 'resize-r'; state.dragObj = hit; }
-                    else { state.dragMode = 'move'; state.dragObj = hit; }
-                    
-                    startX = x;
-                    origStart = hit.start;
-                    origDur = hit.dur;
-                }
-            };
-
-            window.onmousemove = (e) => {
-                if(state.isRendering) return;
-                const rect = cvs.tl.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                
-                // Cursor logic
-                if(!state.dragMode) {
-                    const t = x / state.zoom;
-                    const hit = state.blocks.find(b => t >= b.start && t <= b.start + b.dur);
-                    if(hit && state.tool === 'sel') cvs.tl.style.cursor = 'move';
-                    else if(hit && state.tool === 'split') cvs.tl.style.cursor = 'crosshair';
-                    else cvs.tl.style.cursor = 'default';
-                }
-
-                if(state.dragObj && state.dragMode) {
-                    const dx = (x - startX) / state.zoom;
-                    if(state.dragMode === 'move') state.dragObj.start = origStart + dx;
-                    else if(state.dragMode === 'resize-r') state.dragObj.dur = Math.max(0.1, origDur + dx);
-                    redrawTimelineLayer();
-                }
-            };
-
-            window.onmouseup = () => { state.dragObj = null; state.dragMode = null; };
-        }
-
-        // --- DRAG & DROP ---
-        window.dragStart = (e, type) => { e.dataTransfer.setData('type', type); };
-        window.allowDrop = (e) => e.preventDefault();
-        window.handleDrop = (e) => {
-            e.preventDefault();
-            history.save();
-            const rect = document.getElementById('timeline-scroll').getBoundingClientRect();
-            const scroll = document.getElementById('timeline-scroll').scrollLeft;
-            const x = (e.clientX - rect.left) + scroll;
-            const t = x / state.zoom;
-            state.blocks.push({ id: Date.now(), type: e.dataTransfer.getData('type'), start: t, dur: 1.0, str: 50, ease: 'linear' });
-            redrawTimelineLayer();
-        };
-
-        // --- RENDERERS ---
-        function renderStaticWaveform() {
-            const c = state.cacheCanvas.getContext('2d');
-            const w = state.cacheCanvas.width;
-            const h = state.cacheCanvas.height;
-            const data = state.buf.getChannelData(0);
-            const step = Math.ceil(data.length / w);
-            
-            c.fillStyle = '#111'; c.fillRect(0,0,w,h);
-            
-            // Draw Wave with HEADROOM
-            c.fillStyle = '#555';
-            for(let i=0; i<w; i++) {
-                let min=1.0, max=-1.0;
-                for(let j=0; j<step; j++) {
-                    const d = data[(i*step)+j];
-                    if(d<min)min=d; if(d>max)max=d;
-                }
-                const y = (1+min)*(h/2)*0.8 + (h*0.1);
-                const ht = Math.max(1, (max-min)*(h/2)*0.8);
-                c.fillRect(i, y, 1, ht);
-            }
-        }
-
-        function redrawTimelineLayer() {
-            if(!state.buf) return;
-            const c = ctx.tl;
-            const w = cvs.tl.width; const h = cvs.tl.height;
-            
-            c.drawImage(state.cacheCanvas, 0, 0); // Blit BG
-            
-            state.blocks.forEach(b => {
-                const x = b.start * state.zoom;
-                const bw = b.dur * state.zoom;
-                
-                if(b.type==='shake') c.fillStyle = 'rgba(255, 50, 50, 0.5)';
-                else if(b.type==='flash') c.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                else c.fillStyle = 'rgba(50, 150, 255, 0.5)';
-                
-                if(state.selBlock === b) { c.strokeStyle='#fff'; c.strokeRect(x,10,bw,h-20); }
-                c.fillRect(x,10,bw,h-20);
-                c.fillStyle='#fff'; c.fillText(b.type, x+2, 22);
-            });
-        }
-
+        // --- VISUALIZER LOOP ---
         function loop() {
             requestAnimationFrame(loop);
             const t = state.play ? (state.ctx.currentTime - state.start) : state.pause;
             
-            if(state.isRendering) {
-                const prog = Math.floor((t / state.dur) * 100);
-                document.getElementById('render-prog').innerText = prog + '%';
-            }
-
+            if(state.isRendering) document.getElementById('render-prog').innerText = Math.floor((t/state.dur)*100)+'%';
+            
+            // 1. Process Timeline Blocks
+            let fx = { shake:0, flash:0, invert:0, glitch:0 };
             if(state.buf) {
-                // Playhead (Lazy Draw)
-                redrawTimelineLayer(); 
-                const px = t * state.zoom;
-                ctx.tl.fillStyle = '#ff0033'; ctx.tl.fillRect(px, 0, 2, cvs.tl.height);
+                state.blocks.forEach(b => {
+                    if(t >= b.start && t < b.start + b.dur) {
+                        let nt = (t - b.start) / b.dur;
+                        let val = Easing[b.ease](nt) * (b.str/100);
+                        fx[b.type] += val;
+                    }
+                });
                 
+                // Playhead
+                const px = t * state.zoom;
+                redrawTimelineLayer(); 
+                ctx.tl.fillStyle = '#f03'; ctx.tl.fillRect(px, 0, 2, cvs.tl.height);
                 if(state.play) {
                     const scr = document.getElementById('timeline-scroll');
                     if(px > scr.scrollLeft + scr.clientWidth - 50) scr.scrollLeft = px - 100;
                 }
             }
 
-            // Visualizer (Simple)
+            // 2. Process Audio (Architect Engine)
+            let freq = new Uint8Array(0);
             if(state.play || state.isRendering) {
-                let shake = 0;
-                let flash = 0;
-                let invert = 0;
-                state.blocks.forEach(b => {
-                    if(t >= b.start && t < b.start + b.dur) {
-                        if(b.type==='shake') shake += (b.str/100);
-                        if(b.type==='flash') flash += (b.str/100);
-                    }
-                });
-
-                const c = ctx.vis;
-                const w = cvs.vis.width; const h = cvs.vis.height;
-                
-                c.fillStyle = `rgba(0,0,0,${0.2})`; // Trails
-                c.fillRect(0,0,w,h);
-                
-                c.save();
-                if(shake>0) {
-                    const s = shake*30;
-                    c.translate((Math.random()-0.5)*s, (Math.random()-0.5)*s);
-                }
-                
-                // Draw circle vis
-                let freq = new Uint8Array(state.anal.frequencyBinCount);
+                freq = new Uint8Array(state.anal.frequencyBinCount);
                 state.anal.getByteFrequencyData(freq);
                 
-                c.beginPath();
-                const rad = 150;
-                for(let i=0; i<100; i++) {
-                    const v = freq[i*3]/255;
-                    const ang = (i/100)*Math.PI*2;
-                    const len = v * 200;
-                    c.moveTo(Math.cos(ang)*rad, Math.sin(ang)*rad);
-                    c.lineTo(Math.cos(ang)*(rad+len), Math.sin(ang)*(rad+len));
-                }
-                c.strokeStyle = '#ff0033'; c.lineWidth=3; c.stroke();
-                c.restore();
-
-                // FX
-                const fc = ctx.fx;
-                fc.clearRect(0,0,w,h);
-                if(flash>0) {
-                    fc.fillStyle = `rgba(255,255,255,${flash})`;
-                    fc.fillRect(0,0,w,h);
-                }
+                // Calculate Bands (Sub, Low, Mid, High)
+                const ranges = [[0,10], [10,40], [40,150], [150,500]];
+                state.arch = ranges.map((r, i) => {
+                    let sum=0; for(let k=r[0]; k<r[1]; k++) sum+=freq[k];
+                    let avg = (sum/(r[1]-r[0])) / 255; 
+                    // Apply Slider Gain
+                    avg *= parseFloat(document.getElementById('g-'+i).value);
+                    // Update UI Bars
+                    document.getElementById('fill-'+i).style.height = Math.min(100, avg*100) + '%';
+                    return avg;
+                });
             }
+
+            // 3. Render Visuals
+            renderVisuals(freq, fx);
         }
 
-        window.openEditor = (b, x, y) => {
-            const el = document.getElementById('block-editor');
-            el.style.display = 'block';
-            el.style.left = Math.min(window.innerWidth-220, x)+'px';
-            el.style.top = Math.min(window.innerHeight-200, y-100)+'px';
-            document.getElementById('ed-str').value = b.str;
+        function renderVisuals(freq, fx) {
+            const w = cvs.vis.width; const h = cvs.vis.height;
+            const c = ctx.vis;
+            
+            // Trail Effect
+            c.fillStyle = `rgba(0,0,0,${0.15 + fx.glitch*0.2})`; 
+            c.fillRect(0,0,w,h);
+            
+            c.save();
+            c.translate(w/2, h/2);
+            
+            // Apply Shake
+            const shake = fx.shake * 40;
+            if(shake>0) c.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+            
+            // Scale based on Sub-Bass (Arch[0])
+            const bass = state.arch[0] || 0;
+            const scale = state.visScale + (bass * 0.4); 
+            c.scale(scale, scale);
+
+            // Draw Circle
+            if(freq.length) {
+                c.beginPath();
+                const rad = 120;
+                const points = 100;
+                
+                for(let i=0; i<=points; i++) {
+                    // Map index to frequency, but favor bass
+                    const fIdx = Math.floor(i * 3); 
+                    let val = freq[fIdx] / 255;
+                    
+                    // Add FX influence
+                    val += fx.invert * 0.5; // Invert explodes the circle
+                    
+                    const ang = (i / points) * Math.PI * 2;
+                    const len = rad + (val * 150);
+                    
+                    const x = Math.cos(ang) * len;
+                    const y = Math.sin(ang) * len;
+                    
+                    if(i===0) c.moveTo(x,y); else c.lineTo(x,y);
+                }
+                c.closePath();
+                
+                c.lineWidth = 3 + fx.glitch*10;
+                c.strokeStyle = fx.invert > 0.5 ? '#fff' : '#ff0033';
+                c.stroke();
+                
+                // Fill center if high bass
+                c.fillStyle = `rgba(255,0,50, ${bass * 0.2})`;
+                c.fill();
+            }
+            c.restore();
+
+            // FX Layer
+            const fc = ctx.fx;
+            fc.clearRect(0,0,w,h);
+            
+            if(fx.flash > 0) {
+                fc.fillStyle = `rgba(255,255,255,${fx.flash})`;
+                fc.fillRect(0,0,w,h);
+            }
+            
+            // CSS Filter for Invert
+            cvs.vis.style.filter = `invert(${fx.invert * 100}%) contrast(${100 + fx.glitch*50}%)`;
+        }
+
+        // --- TIMELINE INTERACTION (Restored from V42) ---
+        function setupTimelineInteraction() {
+            let startX=0, origStart=0, origDur=0;
+            cvs.tl.onmousedown = (e) => {
+                if(!state.buf || state.isRendering) return;
+                const rect = cvs.tl.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const t = x / state.zoom;
+                
+                const hit = state.blocks.find(b => t >= b.start && t <= b.start + b.dur);
+                
+                if(!hit) { togglePlay(t); return; } // Seek
+
+                history.save();
+                if(state.tool === 'del') { state.blocks = state.blocks.filter(b=>b!==hit); redrawTimelineLayer(); return; }
+                if(state.tool === 'split') {
+                    const off = t - hit.start;
+                    const newDur = hit.dur - off;
+                    hit.dur = off;
+                    state.blocks.push({ ...hit, id: Date.now(), start:t, dur:newDur });
+                    redrawTimelineLayer(); return;
+                }
+                if(state.tool === 'sel') {
+                    state.selBlock = hit;
+                    openEditor(hit, e.clientX, e.clientY);
+                    const pxEnd = (hit.start + hit.dur) * state.zoom;
+                    if(Math.abs(x - pxEnd) < 10) { state.dragMode = 'resize-r'; state.dragObj = hit; }
+                    else { state.dragMode = 'move'; state.dragObj = hit; }
+                    startX = x; origStart = hit.start; origDur = hit.dur;
+                }
+            };
+            window.onmousemove = (e) => {
+                if(state.isRendering || !state.dragObj) return;
+                const dx = (e.clientX - cvs.tl.getBoundingClientRect().left - startX) / state.zoom;
+                if(state.dragMode === 'move') state.dragObj.start = origStart + dx;
+                else state.dragObj.dur = Math.max(0.1, origDur + dx);
+                redrawTimelineLayer();
+            };
+            window.onmouseup = () => { state.dragObj = null; state.dragMode = null; };
+        }
+
+        // --- HELPERS ---
+        window.dragStart = (e, t) => e.dataTransfer.setData('type', t);
+        window.allowDrop = (e) => e.preventDefault();
+        window.handleDrop = (e) => {
+            e.preventDefault(); history.save();
+            const t = ((e.clientX - document.getElementById('timeline-scroll').getBoundingClientRect().left) + document.getElementById('timeline-scroll').scrollLeft) / state.zoom;
+            state.blocks.push({ id:Date.now(), type:e.dataTransfer.getData('type'), start:t, dur:1.0, str:80, ease:'linear' });
+            redrawTimelineLayer();
+        };
+
+        function renderStaticWaveform() {
+            const c = state.cacheCanvas.getContext('2d');
+            const w = state.cacheCanvas.width; const h = state.cacheCanvas.height;
+            const d = state.buf.getChannelData(0); const step = Math.ceil(d.length/w);
+            c.fillStyle = '#111'; c.fillRect(0,0,w,h);
+            c.fillStyle = '#555';
+            for(let i=0; i<w; i++) {
+                let max=0; for(let j=0; j<step; j++) if(Math.abs(d[i*step+j])>max) max=Math.abs(d[i*step+j]);
+                c.fillRect(i, h/2 - max*h*0.4, 1, max*h*0.8);
+            }
+        }
+        function redrawTimelineLayer() {
+            if(!state.buf) return;
+            const c = ctx.tl;
+            c.drawImage(state.cacheCanvas, 0, 0);
+            state.blocks.forEach(b => {
+                const x = b.start*state.zoom;
+                c.fillStyle = b.type==='shake'?'rgba(255,50,50,0.5)':'rgba(50,150,255,0.5)';
+                if(state.selBlock===b) { c.strokeStyle='#fff'; c.strokeRect(x,10,b.dur*state.zoom, cvs.tl.height-20); }
+                c.fillRect(x,10,b.dur*state.zoom, cvs.tl.height-20);
+                c.fillStyle='#fff'; c.fillText(b.type, x+2, 22);
+            });
+        }
+        window.openEditor = (b,x,y) => {
+            const e = document.getElementById('block-editor');
+            e.style.display='block'; e.style.left=Math.min(window.innerWidth-220,x)+'px'; e.style.top=Math.min(window.innerHeight-200,y-100)+'px';
+            document.getElementById('ed-str').value=b.str;
         };
         window.closeEditor = () => document.getElementById('block-editor').style.display='none';
-        window.updateBlock = (k, v) => { if(state.selBlock) state.selBlock[k]=v; redrawTimelineLayer(); };
+        window.updateBlock = (k,v) => { if(state.selBlock) state.selBlock[k]=v; redrawTimelineLayer(); };
 
         init();
     </script>
