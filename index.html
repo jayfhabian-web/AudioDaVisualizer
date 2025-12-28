@@ -2,15 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V26 - Priority Mode</title>
+    <title>Phonk V27 - The Analyst</title>
     <style>
         /* --- THEME --- */
         :root {
             --bg: #000;
-            --panel: rgba(10, 10, 10, 0.96);
+            --panel: rgba(10, 10, 10, 0.98);
             --border: rgba(255, 255, 255, 0.15);
             --text: #ccc;
             --accent: #ff0033;
+            --clip: #fff;
         }
         * { box-sizing: border-box; user-select: none; }
 
@@ -19,6 +20,7 @@
         #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: screen; }
         #canvas-layer { position: absolute; top: 0; left: 0; z-index: 1; }
         
+        /* LOGO / CENTER */
         #logo-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 320px; height: 320px; z-index: 5; border-radius: 50%; 
@@ -30,12 +32,22 @@
 
         /* UI PANEL */
         #ui-panel {
-            position: absolute; top: 0; left: 0; width: 380px; height: 100vh;
+            position: absolute; top: 0; left: 0; width: 400px; height: 100vh;
             background: var(--panel); border-right: 1px solid var(--border);
             padding: 15px; z-index: 20; overflow-y: auto;
             transition: transform 0.2s ease;
         }
         #ui-panel.hidden { transform: translateX(-100%); }
+
+        /* LOADING OVERLAY */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100; display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        #loader.active { display: flex; }
+        .loader-text { font-size: 20px; color: var(--accent); font-weight: bold; letter-spacing: 3px; margin-bottom: 10px; }
+        .loader-sub { font-size: 12px; color: #fff; opacity: 0.7; }
 
         h2 { font-size: 14px; color: #fff; margin: 0 0 15px 0; border-left: 3px solid var(--accent); padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 10px; color: #666; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
@@ -50,8 +62,8 @@
 
         /* --- THE SCULPTOR GRID --- */
         .sculptor-grid {
-            display: flex; gap: 5px; height: 160px; background: #050505; 
-            border: 1px solid #333; padding: 5px; margin-bottom: 10px;
+            display: flex; gap: 6px; height: 200px; background: #050505; 
+            border: 1px solid #333; padding: 6px; margin-bottom: 10px;
         }
         .sculpt-col { 
             flex: 1; display: flex; flex-direction: column; 
@@ -60,12 +72,14 @@
         
         .graph-area {
             flex: 1; position: relative; width: 100%; overflow: hidden; cursor: row-resize;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.5); border-bottom: 1px solid #333;
         }
         .audio-bar { 
             position: absolute; bottom: 0; left: 0; width: 100%; 
-            height: 0%; background: #444; opacity: 0.6; transition: height 0.05s;
+            height: 0%; background: #444; opacity: 0.7; transition: height 0.05s;
         }
+        /* Clipping Animation */
+        .audio-bar.clipping { background: #fff !important; box-shadow: 0 0 10px #fff; }
         .audio-bar.active { opacity: 1; box-shadow: 0 0 15px currentColor; }
         
         .thresh-line {
@@ -73,37 +87,48 @@
             background: #fff; z-index: 10; box-shadow: 0 1px 2px black; pointer-events: none;
         }
 
+        /* Controls under bar */
         .col-controls {
-            height: 50px; padding: 4px; display: flex; flex-direction: column; gap: 4px;
-            border-top: 1px solid #222; background: #080808; align-items: center;
+            height: 90px; padding: 4px; display: flex; flex-direction: column; gap: 4px;
+            background: #080808; align-items: center;
         }
         .freq-label { font-size: 8px; text-align: center; color: #555; font-weight: bold;}
         
-        /* THE PRIORITY BUTTON */
         .prio-btn {
             width: 100%; border: 1px solid #333; background: #111; color: #555;
             font-size: 9px; padding: 2px; cursor: pointer; text-transform: uppercase;
-            border-radius: 2px; font-weight: bold; transition: all 0.2s;
+            border-radius: 2px; font-weight: bold; transition: all 0.2s; height: 18px;
         }
         .prio-btn:hover { background: #222; color: #fff; }
-        /* Active State */
-        .prio-btn.active {
-            background: var(--accent); border-color: var(--accent); 
-            color: #fff; box-shadow: 0 0 8px var(--accent);
+        .prio-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 5px var(--accent); }
+
+        /* GAIN SLIDER (Vertical) */
+        .gain-wrapper {
+            flex: 1; width: 100%; display: flex; justify-content: center; align-items: center;
+            background: #0e0e0e; border-radius: 2px; margin-top: 2px; position: relative;
+        }
+        .gain-label { position: absolute; top: 2px; left: 2px; font-size: 7px; color: #444; pointer-events: none;}
+        input[type=range].v-slider {
+            -webkit-appearance: none; width: 40px; height: 4px;
+            transform: rotate(-90deg); background: #333; cursor: pointer;
         }
 
         /* Visual Settings */
         .color-row { display: flex; gap: 5px; margin-bottom: 10px; }
         .color-box { flex: 1; background: #111; padding: 5px; border: 1px solid #222; border-radius: 4px; }
         input[type="color"] { width: 100%; height: 20px; border: none; padding: 0; background: none; cursor: pointer; }
-
         .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; background: #0f0f0f; padding: 8px; border-radius: 4px; border: 1px solid #222; }
         
-        #toggle-ui { position: absolute; top: 15px; left: 400px; z-index: 25; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
+        #toggle-ui { position: absolute; top: 15px; left: 420px; z-index: 25; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
         #ui-panel.hidden + #toggle-ui { left: 15px; }
     </style>
 </head>
 <body>
+
+    <div id="loader">
+        <div class="loader-text">ANALYZING TRACK</div>
+        <div class="loader-sub">Scanning Frequencies & Calibrating Ceilings...</div>
+    </div>
 
     <div id="flash-layer"></div>
     <canvas id="canvas-layer"></canvas>
@@ -111,27 +136,26 @@
     <button id="toggle-ui" onclick="toggleUI()">OPEN SCULPTOR</button>
 
     <div id="ui-panel" id="panel">
-        <h2>Phonk V26 <span style="font-size:9px; opacity:0.5">PRIORITY</span></h2>
+        <h2>Phonk V27 <span style="font-size:9px; opacity:0.5">THE ANALYST</span></h2>
 
         <div class="control-group">
-            <label>Track</label>
+            <label>Track (Auto-Analysis on Load)</label>
             <input type="file" id="file-in" accept="audio/*">
-            <audio id="audio" controls style="width:100%; margin-top:5px; height:20px; opacity:0.6;"></audio>
+            <audio id="audio" controls style="width:100%; margin-top:5px; height:20px; opacity:0.6; display:none;"></audio>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <button id="play-btn" onclick="togglePlay()" disabled style="flex:1; background:#111; border:1px solid #333; color:#555; padding:5px; cursor:pointer;">PLAY</button>
+            </div>
         </div>
+        
         <div class="control-group">
             <label>Image</label>
             <input type="file" id="img-in" accept="image/*">
         </div>
         
-        <div class="control-group" style="background:#111; padding:10px; border:1px solid #333; border-radius:4px;">
-            <label style="color:#fff;">Global Pre-Amp</label>
-            <input type="range" id="pre-amp" min="1.0" max="3.0" step="0.1" value="1.0">
-        </div>
-
-        <h3>2. Frequency Sculptor</h3>
+        <h3>1. Frequency Sculptor</h3>
         <p style="font-size:9px; color:#555; margin-bottom:10px;">
-            Click <b>PRIORITIZE</b> to make that bar the main trigger.<br>
-            Only one can be active at a time.
+            • <b>Prioritize:</b> Makes that bar 50% stronger.<br>
+            • <b>Gain Slider:</b> Increase ceiling for that bar (Sensitivity).
         </p>
 
         <div class="sculptor-grid">
@@ -142,6 +166,10 @@
                 <div class="col-controls">
                     <div class="freq-label">20Hz</div>
                     <button class="prio-btn" id="btn-0" onclick="setPriority(0)">Prioritize</button>
+                    <div class="gain-wrapper">
+                        <span class="gain-label">GAIN</span>
+                        <input type="range" class="v-slider" id="gain-0" min="0.5" max="4.0" step="0.1" value="1.0" title="Individual Ceiling Gain">
+                    </div>
                 </div>
             </div>
             <div class="sculpt-col">
@@ -151,6 +179,10 @@
                 <div class="col-controls">
                     <div class="freq-label">40Hz</div>
                     <button class="prio-btn" id="btn-1" onclick="setPriority(1)">Prioritize</button>
+                    <div class="gain-wrapper">
+                        <span class="gain-label">GAIN</span>
+                        <input type="range" class="v-slider" id="gain-1" min="0.5" max="4.0" step="0.1" value="1.0" title="Individual Ceiling Gain">
+                    </div>
                 </div>
             </div>
             <div class="sculpt-col">
@@ -160,6 +192,10 @@
                 <div class="col-controls">
                     <div class="freq-label">60Hz</div>
                     <button class="prio-btn" id="btn-2" onclick="setPriority(2)">Prioritize</button>
+                    <div class="gain-wrapper">
+                        <span class="gain-label">GAIN</span>
+                        <input type="range" class="v-slider" id="gain-2" min="0.5" max="4.0" step="0.1" value="1.0" title="Individual Ceiling Gain">
+                    </div>
                 </div>
             </div>
             <div class="sculpt-col">
@@ -169,11 +205,21 @@
                 <div class="col-controls">
                     <div class="freq-label">80Hz</div>
                     <button class="prio-btn" id="btn-3" onclick="setPriority(3)">Prioritize</button>
+                    <div class="gain-wrapper">
+                        <span class="gain-label">GAIN</span>
+                        <input type="range" class="v-slider" id="gain-3" min="0.5" max="4.0" step="0.1" value="1.0" title="Individual Ceiling Gain">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <h3>3. Visuals</h3>
+        <div class="control-group" style="background:#111; padding:10px; border:1px solid #333;">
+            <label style="color:#fff;">Master Pre-Amp (Auto-Set)</label>
+            <input type="range" id="pre-amp" min="0.5" max="3.0" step="0.1" value="1.0">
+            <div style="font-size:8px; color:#666; margin-top:3px;">Calculated from track analysis. Tweak if needed.</div>
+        </div>
+
+        <h3>2. Visuals</h3>
         <div class="control-group">
             <label>Bar Shape</label>
             <select id="shape-select">
@@ -193,7 +239,7 @@
         <div class="control-group"><label>Bar Length</label><input type="range" id="bar-len" min="50" max="400" value="160"></div>
         <div class="control-group"><label>Bar Width</label><input type="range" id="bar-width" min="2" max="50" value="25"></div>
 
-        <h3>4. Effects</h3>
+        <h3>3. Effects</h3>
         <div class="checkbox-row" style="flex-wrap:wrap;">
             <label style="margin-right:10px;"><input type="checkbox" id="fx-zoom" checked> Zoom</label>
             <label style="margin-right:10px;"><input type="checkbox" id="fx-shake" checked> Shake</label>
@@ -204,14 +250,17 @@
     <script>
         const dom = {
             audio: document.getElementById('audio'),
+            playBtn: document.getElementById('play-btn'),
             canvas: document.getElementById('canvas-layer'),
             ctx: document.getElementById('canvas-layer').getContext('2d'),
             logo: document.getElementById('logo-container'),
             flash: document.getElementById('flash-layer'),
             panel: document.getElementById('ui-panel'),
+            loader: document.getElementById('loader'),
             bars: [0,1,2,3].map(i => document.getElementById(`bar-${i}`)),
             lines: [0,1,2,3].map(i => document.getElementById(`line-${i}`)),
             btns: [0,1,2,3].map(i => document.getElementById(`btn-${i}`)),
+            gains: [0,1,2,3].map(i => document.getElementById(`gain-${i}`)),
             colIdle: document.getElementById('col-idle'),
             colBass: document.getElementById('col-bass'),
             autoColor: document.getElementById('auto-color'),
@@ -227,126 +276,176 @@
             physics: 0,
             thresholds: [0.8, 0.6, 0.65, 0.85],
             extracted: { bass: '#ff0033', idle: '#ffffff' },
-            priorityBand: -1 // -1 means no priority
+            priorityBand: -1,
+            isPlaying: false
         };
 
-        // --- PRIORITY LOGIC ---
-        window.setPriority = (idx) => {
-            // If clicking the already active one, turn it off
-            if (state.priorityBand === idx) {
-                state.priorityBand = -1;
-            } else {
-                state.priorityBand = idx;
-            }
-            updateButtons();
-        };
+        // --- AUDIO ENGINE ---
+        let audioCtx, source, analyser, audioBuffer;
 
-        function updateButtons() {
-            dom.btns.forEach((btn, i) => {
-                if (i === state.priorityBand) {
-                    btn.classList.add('active');
-                    btn.innerText = "ACTIVE";
-                } else {
-                    btn.classList.remove('active');
-                    btn.innerText = "PRIORITIZE";
-                }
-            });
-        }
+        // 1. FILE INPUT -> ANALYZE
+        document.getElementById('file-in').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
 
-        // --- DRAG LOGIC ---
-        let dragTarget = -1;
-        function startDrag(index, e) {
-            dragTarget = index;
-            updateDrag(e);
-            document.addEventListener('mousemove', onDrag);
-            document.addEventListener('mouseup', endDrag);
-        }
-        function onDrag(e) { if(dragTarget !== -1) updateDrag(e); }
-        function endDrag() { 
-            dragTarget = -1; 
-            document.removeEventListener('mousemove', onDrag);
-            document.removeEventListener('mouseup', endDrag);
-        }
-        function updateDrag(e) {
-            const rect = document.getElementById(`graph-${dragTarget}`).getBoundingClientRect();
-            let y = 1.0 - ((e.clientY - rect.top) / rect.height);
-            if (y < 0) y = 0; if (y > 1) y = 1;
-            state.thresholds[dragTarget] = y;
-            dom.lines[dragTarget].style.bottom = (y * 100) + "%";
-        }
+            // Show Loader
+            dom.loader.classList.add('active');
+            dom.playBtn.disabled = true;
+            dom.playBtn.innerText = "ANALYZING...";
 
-        // --- AUDIO ---
-        let audioCtx, source, analyser;
-        dom.audio.addEventListener('play', () => {
-            if(state.connected) { if(audioCtx.state === 'suspended') audioCtx.resume(); return; }
+            const arrayBuffer = await file.arrayBuffer();
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            source = audioCtx.createMediaElementSource(dom.audio);
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 2048; 
-            source.connect(analyser);
-            source.connect(audioCtx.destination); 
-            state.connected = true;
-            loop();
+            
+            // Decode (This takes a moment for big files)
+            try {
+                audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                analyzeTrack(audioBuffer);
+            } catch (err) {
+                console.error(err);
+                dom.loader.classList.remove('active');
+            }
         });
 
+        // 2. ANALYZE FUNCTION
+        function analyzeTrack(buffer) {
+            const raw = buffer.getChannelData(0); // Left channel
+            const step = 5000; // Scan every 5000th sample to save CPU
+            let maxAmp = 0;
+            let sum = 0;
+            let count = 0;
+
+            // Simple Peak and RMS scan
+            for (let i = 0; i < raw.length; i += step) {
+                const abs = Math.abs(raw[i]);
+                if (abs > maxAmp) maxAmp = abs;
+                sum += abs;
+                count++;
+            }
+            
+            const avg = sum / count;
+
+            // Auto-Set Pre-Amp based on average volume
+            // If song is quiet (low avg), boost Pre-Amp.
+            let suggestedPreAmp = 1.0;
+            if (avg < 0.1) suggestedPreAmp = 2.0;
+            else if (avg < 0.2) suggestedPreAmp = 1.5;
+            else if (avg > 0.4) suggestedPreAmp = 0.8; // Loud song, lower it
+
+            dom.preAmp.value = suggestedPreAmp;
+
+            // Reset Gain Sliders to default
+            dom.gains.forEach(g => g.value = 1.0);
+
+            // Prepare Playback
+            if (source) source.disconnect();
+            
+            // Ready UI
+            dom.loader.classList.remove('active');
+            dom.playBtn.disabled = false;
+            dom.playBtn.innerText = "PLAY TRACK";
+            dom.playBtn.style.color = "#fff";
+            dom.playBtn.style.borderColor = "#fff";
+            
+            state.connected = true;
+        }
+
+        // 3. PLAY TOGGLE
+        window.togglePlay = () => {
+            if(!audioBuffer) return;
+            
+            if(state.isPlaying) {
+                // Stop
+                if(source) source.stop();
+                state.isPlaying = false;
+                dom.playBtn.innerText = "PLAY TRACK";
+            } else {
+                // Play
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                source = audioCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                source.connect(analyser);
+                source.connect(audioCtx.destination);
+                source.start(0);
+                
+                state.isPlaying = true;
+                dom.playBtn.innerText = "STOP TRACK";
+                loop();
+            }
+        }
+
+        // --- MAIN LOOP ---
         function loop() {
+            if(!state.isPlaying) return;
             requestAnimationFrame(loop);
-            const buffer = analyser.frequencyBinCount; 
-            const data = new Uint8Array(buffer);
+            
+            const bufferLen = analyser.frequencyBinCount; 
+            const data = new Uint8Array(bufferLen);
             analyser.getByteFrequencyData(data);
 
-            const gain = parseFloat(dom.preAmp.value); 
+            const masterGain = parseFloat(dom.preAmp.value); 
             const bands = [data[1], data[2], data[3], data[4]];
             let totalForce = 0;
             let triggered = false;
 
             bands.forEach((val, i) => {
-                let amplifiedVal = (val * gain) / 255;
+                // 1. Get Individual Gain for this bar
+                const barGain = parseFloat(dom.gains[i].value);
                 
-                // === PRIORITY BOOST ===
-                // If this is the priority band, boost it by 50%
-                if (state.priorityBand === i) {
-                    amplifiedVal *= 1.5; 
+                // 2. Calculate Value (Value * MasterGain * IndividualGain)
+                let amplifiedVal = (val / 255) * masterGain * barGain;
+                
+                // Priority Boost
+                if (state.priorityBand === i) amplifiedVal *= 1.5; 
+
+                // 3. UI Update
+                // Clamp visual at 100%
+                let visualHeight = amplifiedVal;
+                let isClipping = false;
+
+                if(visualHeight > 1.0) {
+                    visualHeight = 1.0;
+                    isClipping = true;
                 }
 
-                if(amplifiedVal > 1) amplifiedVal = 1;
-
-                // UI Update
-                dom.bars[i].style.height = (amplifiedVal * 100) + "%";
+                dom.bars[i].style.height = (visualHeight * 100) + "%";
                 
-                // Color logic: Priority band gets a special highlight in UI
-                let barColor = '#555';
-                if (state.priorityBand === i) barColor = '#888'; 
-                if (triggered) barColor = dom.colBass.value; 
-                
-                dom.bars[i].style.backgroundColor = barColor;
+                // Color Logic
+                if(isClipping) {
+                    dom.bars[i].className = 'audio-bar active clipping'; // White flash
+                } else if (amplifiedVal > state.thresholds[i]) {
+                    dom.bars[i].className = 'audio-bar active';
+                    dom.bars[i].style.backgroundColor = dom.colBass.value;
+                } else {
+                    dom.bars[i].className = 'audio-bar';
+                    dom.bars[i].style.backgroundColor = (state.priorityBand === i) ? '#888' : '#444';
+                }
 
-                // Check Threshold
+                // 4. Trigger Physics
                 const thresh = state.thresholds[i];
                 if (amplifiedVal > thresh) {
-                    dom.bars[i].classList.add('active');
-                    dom.bars[i].style.backgroundColor = dom.colBass.value;
                     let excess = amplifiedVal - thresh;
                     totalForce += excess;
                     triggered = true;
-                } else {
-                    dom.bars[i].classList.remove('active');
                 }
             });
 
+            // Physics Smoothing
             const sensitivity = 2.0; 
             let push = totalForce * sensitivity;
 
             if (push > state.physics) state.physics = push;
             else state.physics *= 0.82; 
             
-            if(state.physics > 2.0) state.physics = 2.0;
+            if(state.physics > 2.5) state.physics = 2.5;
             if(state.physics < 0.001) state.physics = 0;
 
-            draw(data, buffer, state.physics);
+            draw(data, bufferLen, state.physics);
             applyFx(state.physics);
         }
 
+        // --- VISUALS ---
         function draw(data, count, phys) {
             const ctx = dom.ctx;
             const cx = dom.canvas.width / 2;
@@ -379,10 +478,10 @@
 
             for(let i = 0; i < totalBars; i++) {
                 let index = 2 + i * 2;
-                let val = (data[index] * gain); 
-                if(val > 255) val = 255;
+                let val = (data[index] / 255) * gain; 
+                if(val > 1) val = 1;
 
-                let h = (val / 255) * maxLen;
+                let h = val * maxLen;
                 if(h < 4) h = 4;
 
                 drawBar(ctx, cx, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
@@ -427,9 +526,26 @@
             return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
         }
         window.toggleUI = () => dom.panel.classList.toggle('hidden');
-        window.toggleAutoColor = () => {
-            const a = dom.autoColor.checked;
-            if(a) { dom.colBass.value = state.extracted.bass; dom.colIdle.value = state.extracted.idle; }
+        window.toggleAutoColor = () => { if(dom.autoColor.checked) { dom.colBass.value = state.extracted.bass; dom.colIdle.value = state.extracted.idle; } }
+        window.setPriority = (idx) => {
+            state.priorityBand = (state.priorityBand === idx) ? -1 : idx;
+            dom.btns.forEach((btn, i) => {
+                if (i === state.priorityBand) { btn.classList.add('active'); btn.innerText = "ACTIVE"; } 
+                else { btn.classList.remove('active'); btn.innerText = "PRIORITIZE"; }
+            });
+        };
+        
+        // Threshold Dragging
+        let dragTarget = -1;
+        function startDrag(index, e) { dragTarget = index; updateDrag(e); document.addEventListener('mousemove', onDrag); document.addEventListener('mouseup', endDrag); }
+        function onDrag(e) { if(dragTarget !== -1) updateDrag(e); }
+        function endDrag() { dragTarget = -1; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', endDrag); }
+        function updateDrag(e) {
+            const rect = document.getElementById(`graph-${dragTarget}`).getBoundingClientRect();
+            let y = 1.0 - ((e.clientY - rect.top) / rect.height);
+            if (y < 0) y = 0; if (y > 1) y = 1;
+            state.thresholds[dragTarget] = y;
+            dom.lines[dragTarget].style.bottom = (y * 100) + "%";
         }
 
         document.getElementById('img-in').addEventListener('change', e => {
@@ -446,7 +562,6 @@
                 if(dom.autoColor.checked) { dom.colBass.value = state.extracted.bass; dom.colIdle.value = state.extracted.idle; }
             }
         });
-        document.getElementById('file-in').addEventListener('change', e => { dom.audio.src = URL.createObjectURL(e.target.files[0]); dom.audio.play(); });
         window.onresize = () => { dom.canvas.width=window.innerWidth; dom.canvas.height=window.innerHeight; }
     </script>
 </body>
