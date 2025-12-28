@@ -2,670 +2,600 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V31 - Director's Cut</title>
+    <title>Phonk V32 - Ultimate Engine</title>
     <style>
         /* --- THEME --- */
         :root {
             --bg: #000;
-            --panel: rgba(10, 10, 10, 0.98);
+            --panel: rgba(10, 10, 10, 0.95);
             --border: rgba(255, 255, 255, 0.15);
             --text: #ccc;
             --accent: #ff0033;
             --react-active: #00ff88;
         }
         * { box-sizing: border-box; user-select: none; }
-
         body { margin: 0; background: var(--bg); font-family: 'Segoe UI', monospace; overflow: hidden; color: var(--text); }
-        
-        /* --- STAGE LAYERS --- */
-        #stage-container {
+
+        /* --- 3D WORLD STAGE --- */
+        #scene-viewport {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            overflow: hidden; background: #000;
-            filter: contrast(100%) saturate(100%) grayscale(0%) sepia(0%); /* Dynamic Filters */
-            transition: filter 0.05s; /* Fast transition for Fried effect */
+            perspective: 1000px; overflow: hidden; z-index: 1;
+        }
+        
+        #world-pivot {
+            position: absolute; top: 50%; left: 50%;
+            width: 0; height: 0;
+            transform-style: preserve-3d;
         }
 
-        /* 1. Background Image/Logo */
-        #logo-container {
+        /* THE SKYBOX (Cylinder wrapper) */
+        #skybox-container {
+            position: absolute; top: -1500px; left: -1500px; width: 3000px; height: 3000px;
+            transform: translateZ(-500px); /* Push back */
+            transform-style: preserve-3d;
+            pointer-events: none;
+        }
+        /* We simulate a skybox by just making the background massive and rotating it */
+        #bg-media-layer {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 320px; height: 320px; z-index: 5; border-radius: 50%; 
+            width: 100%; height: 100%;
+            object-fit: cover; opacity: 0.6;
+        }
+
+        /* THE BILLBOARD (Holds the Visualizer, always faces camera) */
+        #billboard-group {
+            position: absolute; top: 0; left: 0;
+            transform-style: preserve-3d;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        /* LAYERS INSIDE BILLBOARD */
+        #canvas-layer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        #particle-layer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        
+        #logo-container {
+            position: absolute; top: 0; left: 0; transform: translate(-50%, -50%);
+            width: 320px; height: 320px; border-radius: 50%; 
             background-size: cover; background-position: center;
-            box-shadow: 0 0 100px rgba(0,0,0,1);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
             border: 2px solid rgba(255,255,255,0.05);
-            transition: border-color 0.1s;
         }
 
-        /* 2. Visualizer Canvas */
-        #canvas-layer { position: absolute; top: 0; left: 0; z-index: 6; }
-
-        /* 3. Flash Layer */
-        #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: exclusion; background:white; }
-
-        /* 4. VFX LAYERS */
-        /* The "Comic" Halftone Effect */
-        #comic-layer { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; opacity: 0; 
-            background-image: radial-gradient(#000 15%, transparent 16%), radial-gradient(#000 15%, transparent 16%);
-            background-size: 4px 4px; background-position: 0 0, 2px 2px;
+        /* --- SCREEN OVERLAYS (Post-Process) --- */
+        #overlay-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
         }
+        /* Bloom/Flash */
+        #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; mix-blend-mode: exclusion; background:white; }
+        
+        /* Camcorder UI */
+        #camcorder-ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            padding: 40px; display: none; font-family: 'Courier New', monospace;
+            text-shadow: 2px 2px 0 #000; color: #fff; font-weight: bold; font-size: 20px;
+            background: linear-gradient(rgba(0,0,0,0.2), transparent 10%, transparent 90%, rgba(0,0,0,0.2));
+        }
+        .cam-rec { color: red; animation: blink 1s infinite; }
+        .cam-border { 
+            position: absolute; border: 2px solid rgba(255,255,255,0.3); width: 50px; height: 50px; 
+        }
+        .tl { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+        .tr { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+        .bl { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+        .br { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+        @keyframes blink { 0% { opacity:1; } 50% { opacity:0; } 100% { opacity:1; } }
 
-        /* The True VHS Scanlines */
+        /* VFX Overlays */
         #vhs-scanlines {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 16; opacity: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 4px, 6px 100%;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0;
+            background: repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.2) 3px);
+            pointer-events: none;
+        }
+        #speed-lines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0;
+            background: radial-gradient(circle at center, transparent 30%, #000 150%);
+            /* Speed lines are hard in pure CSS, we will simulate via vignette pulse */
+            box-shadow: inset 0 0 100px #000;
         }
 
         /* --- UI PANEL --- */
         #ui-panel {
-            position: absolute; top: 0; left: 0; width: 440px; height: 100vh;
+            position: absolute; top: 0; left: 0; width: 420px; height: 100vh;
             background: var(--panel); border-right: 1px solid var(--border);
             padding: 15px; z-index: 50; overflow-y: auto;
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease; backdrop-filter: blur(10px);
         }
         #ui-panel.hidden { transform: translateX(-100%); }
 
-        /* MODALS */
-        .overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 100; display: none;
-            flex-direction: column; justify-content: center; align-items: center;
-        }
-        .overlay.active { display: flex; }
-        
-        /* TWEAK MODAL */
-        #tweak-modal { z-index: 200; background: rgba(10,10,10,0.98); backdrop-filter: blur(10px); }
-        .tweak-container { width: 90%; max-width: 550px; border: 1px solid #333; padding: 20px; background: #000; border-radius: 8px; position: relative; }
-        .close-btn { position: absolute; top: 10px; right: 10px; color: #555; cursor: pointer; font-size: 20px; font-weight: bold; }
-        
-        #tweak-graph { width: 100%; height: 150px; background: #080808; border: 1px solid #333; position: relative; margin-bottom: 20px; overflow: hidden; cursor: row-resize; }
-        #tweak-bar { width: 100%; height: 0%; background: var(--accent); position: absolute; bottom: 0; left: 0; transition: height 0.05s; }
-        #tweak-thresh { width: 100%; height: 2px; background: #fff; position: absolute; bottom: 80%; left: 0; box-shadow: 0 0 10px #fff; pointer-events: none; }
-        
-        .complex-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
-        .knob-group { flex: 1; text-align: center; background: #111; padding: 5px; border: 1px solid #222; border-radius: 4px; }
-        .knob-label { font-size: 8px; color: #888; text-transform: uppercase; margin-bottom: 2px; }
-        .knob-val { font-size: 10px; color: var(--accent); font-weight: bold; }
-
-        .react-btn { width: 100%; padding: 10px; background: #111; border: 1px solid #333; color: #555; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 10px; margin-bottom: 5px; }
-        .react-btn.active { background: var(--react-active); color: #000; border: none; }
-
-        /* UI ELEMENTS */
+        /* General UI Components */
         h2 { font-size: 14px; color: #fff; margin: 0 0 15px 0; border-left: 3px solid var(--accent); padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 10px; color: #666; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
-
         .control-group { margin-bottom: 12px; }
         label { display: flex; justify-content: space-between; font-size: 9px; color: #888; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
+        select, input[type="file"] { width: 100%; background: #111; border: 1px solid #222; color: #ccc; padding: 6px; font-size: 10px; text-transform: uppercase; border-radius: 4px; }
         input[type="range"] { width: 100%; height: 4px; background: #222; border-radius: 2px; appearance: none; cursor: pointer; }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background: #fff; border-radius: 50%; }
-        input[type="file"] { width: 100%; background: #111; border: 1px solid #222; color: #666; padding: 6px; border-radius: 4px; font-size: 9px; }
-        select { width: 100%; background: #111; border: 1px solid #222; color: #ccc; padding: 6px; font-size: 10px; text-transform: uppercase; }
-
-        /* VFX RACK STYLES */
-        .vfx-row { display: flex; align-items: center; background: #0a0a0a; border: 1px solid #222; padding: 8px; margin-bottom: 5px; border-radius: 4px; }
-        .vfx-name { width: 80px; font-size: 10px; font-weight: bold; color: #ccc; }
-        .vfx-controls { flex: 1; display: flex; gap: 5px; align-items: center; }
-        .vfx-slider { flex: 1; }
-        .link-btn { width: 40px; font-size: 8px; background: #111; color: #444; border: 1px solid #333; cursor: pointer; height: 20px; text-transform: uppercase; }
-        .link-btn.linked { background: var(--react-active); color: #000; border-color: var(--react-active); font-weight: bold; }
-
-        /* MAIN GRID */
-        .sculptor-grid { display: flex; gap: 6px; height: 200px; background: #050505; border: 1px solid #333; padding: 6px; margin-bottom: 10px; }
-        .sculpt-col { flex: 1; display: flex; flex-direction: column; border: 1px solid #222; background: #111; position: relative; }
-        .graph-area { flex: 1; position: relative; width: 100%; overflow: hidden; background: rgba(0,0,0,0.5); border-bottom: 1px solid #333; cursor: row-resize; }
-        .audio-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #444; opacity: 0.7; transition: height 0.05s; }
-        .thresh-line { position: absolute; left: 0; width: 100%; height: 2px; background: #fff; pointer-events: none; opacity: 1.0; z-index: 5;}
-
-        .col-controls { height: 90px; padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: #080808; }
-        .tweak-trigger-btn { width:100%; background: none; border: 1px solid #333; color: #666; font-size: 10px; padding: 2px 0; cursor: pointer; border-radius: 2px; text-transform: uppercase; }
-        .tweak-trigger-btn:hover { color: #fff; border-color: #fff; background: #222; }
-        .gain-wrapper { position: relative; width: 100%; flex: 1; display: flex; justify-content: center; align-items: center; margin: 5px 0; background: #0e0e0e; border: 1px solid #181818; }
-        input[type=range].v-slider { -webkit-appearance: none; width: 50px; height: 4px; transform: rotate(-90deg); background: #333; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.5); }
         
-        .react-indicator { width: 6px; height: 6px; background: var(--react-active); border-radius: 50%; box-shadow: 0 0 5px var(--react-active); display: none; margin-bottom: 2px; }
-        .react-indicator.active { display: block; }
-        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; background: #0f0f0f; padding: 8px; border-radius: 4px; border: 1px solid #222; }
-        #toggle-ui { position: absolute; top: 15px; left: 460px; z-index: 55; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
+        /* VFX Row with Dropdowns */
+        .vfx-row { display: flex; align-items: center; background: #0a0a0a; border: 1px solid #222; padding: 8px; margin-bottom: 5px; border-radius: 4px; gap: 8px; }
+        .vfx-name { width: 70px; font-size: 9px; font-weight: bold; color: #ccc; }
+        .vfx-slider { flex: 1; }
+        .vfx-select { width: 60px; font-size: 8px; height: 20px; padding: 0; background: #151515; border-color: #333; }
+        
+        /* Grid */
+        .sculptor-grid { display: flex; gap: 4px; height: 160px; margin-bottom: 10px; }
+        .sculpt-col { flex: 1; background: #111; border: 1px solid #222; position: relative; display: flex; flex-direction: column; }
+        .graph-area { flex: 1; position: relative; border-bottom: 1px solid #333; cursor: row-resize; overflow: hidden; background: rgba(0,0,0,0.3); }
+        .audio-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #444; opacity: 0.8; transition: height 0.05s; }
+        .thresh-line { position: absolute; left: 0; width: 100%; height: 2px; background: #fff; box-shadow: 0 0 5px #fff; pointer-events: none; }
+        .col-controls { height: 60px; display: flex; align-items: center; justify-content: center; background: #080808; padding: 5px; }
+        
+        /* Tweak Modal */
+        #tweak-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        #tweak-modal.active { display: flex; }
+        .tweak-box { width: 400px; background: #050505; border: 1px solid #333; padding: 20px; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+
+        #toggle-ui { position: absolute; top: 15px; left: 440px; z-index: 60; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; }
         #ui-panel.hidden + #toggle-ui { left: 15px; }
 
-        /* Animation for True VHS */
-        @keyframes vhs-twitch {
-            0% { transform: translateX(0); }
-            5% { transform: translateX(2px); }
-            10% { transform: translateX(-2px); }
-            15% { transform: translateX(0); }
-            100% { transform: translateX(0); }
-        }
-        .vhs-active #stage-container {
-            animation: vhs-twitch 3s infinite;
-        }
+        /* Utilities */
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="">
+<body>
 
-    <div id="stage-container">
-        <div id="logo-container"></div>
-        
-        <canvas id="canvas-layer"></canvas>
-        
-        <div id="comic-layer"></div>
-        <div id="vhs-scanlines"></div>
-        <div id="flash-layer"></div>
-    </div>
-
-    <div id="loader" class="overlay">
-        <div style="font-size: 20px; color: var(--accent); font-weight: bold;">ANALYZING TRACK</div>
-    </div>
-
-    <div id="tweak-modal" class="overlay">
-        <div class="tweak-container">
-            <div class="close-btn" onclick="closeTweak()">×</div>
-            <h2 style="border:none; text-align:center; margin-bottom:5px;">Architect <span id="tweak-band-id" style="color:var(--accent)"></span></h2>
+    <div id="scene-viewport">
+        <div id="world-pivot">
             
-            <div id="tweak-graph" onmousedown="startDrag(state.currentTweakIndex, event, 'tweak')">
-                <div id="tweak-bar"></div>
-                <div id="tweak-thresh"></div>
+            <div id="skybox-container">
+                <img id="bg-img" src="" style="display:none; width:100%; height:100%; object-fit:cover;">
+                <video id="bg-video" loop muted playsinline style="display:none; width:100%; height:100%; object-fit:cover;"></video>
+                <div id="bg-default" style="width:100%; height:100%; background: radial-gradient(circle, #222 0%, #000 100%);"></div>
             </div>
 
-            <div class="complex-row">
-                <div class="knob-group"><div class="knob-label">Attack</div><div class="knob-val" id="val-attack">0.0</div><input type="range" id="input-attack" min="0" max="0.9" step="0.05" oninput="updateKnobs()"></div>
-                <div class="knob-group"><div class="knob-label">Decay</div><div class="knob-val" id="val-decay">0.15</div><input type="range" id="input-decay" min="0.01" max="0.5" step="0.01" oninput="updateKnobs()"></div>
-                <div class="knob-group"><div class="knob-label">Gate</div><div class="knob-val" id="val-gate">0.0</div><input type="range" id="input-gate" min="0" max="0.4" step="0.01" oninput="updateKnobs()"></div>
+            <div id="billboard-group">
+                <canvas id="particle-layer"></canvas>
+                <canvas id="canvas-layer"></canvas>
+                <div id="logo-container"></div>
             </div>
 
-            <button class="react-btn" id="tweak-react-btn" onclick="toggleReact()">LINK MASTER PHYSICS</button>
-            <div style="text-align:center; font-size:9px; color:#555; margin-top:5px;">To Link VFX, close this and use the VFX Rack below.</div>
+        </div>
+    </div>
+
+    <div id="overlay-container">
+        <div id="flash-layer"></div>
+        <div id="vhs-scanlines"></div>
+        <div id="speed-lines"></div>
+        
+        <div id="camcorder-ui">
+            <div class="cam-border tl"></div><div class="cam-border tr"></div>
+            <div class="cam-border bl"></div><div class="cam-border br"></div>
+            <div style="position:absolute; top:30px; left:40px;">PLAY <span style="font-size:12px;">SP</span></div>
+            <div style="position:absolute; top:30px; right:40px;" class="cam-rec">● REC</div>
+            <div style="position:absolute; bottom:30px; left:40px;" id="time-code">00:00:00</div>
+            <div style="position:absolute; bottom:30px; right:40px;">BATTERY [|||]</div>
+        </div>
+    </div>
+
+    <div id="tweak-modal">
+        <div class="tweak-box">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <h2 style="border:none; margin:0;">Tweak <span id="tweak-title" style="color:var(--accent)"></span></h2>
+                <button onclick="closeTweak()" style="background:none; border:none; color:#555; cursor:pointer;">X</button>
+            </div>
+            <div class="control-group"><label>Attack</label><input type="range" id="inp-atk" min="0" max="0.9" step="0.05"></div>
+            <div class="control-group"><label>Decay</label><input type="range" id="inp-dec" min="0.01" max="0.5" step="0.01"></div>
+            <div class="control-group"><label>Gate</label><input type="range" id="inp-gate" min="0" max="0.4" step="0.01"></div>
         </div>
     </div>
 
     <button id="toggle-ui" onclick="toggleUI()">OPEN ENGINE</button>
 
-    <div id="ui-panel" id="panel">
-        <h2>Phonk V31 <span style="font-size:9px; opacity:0.5">DIRECTOR'S CUT</span></h2>
+    <div id="ui-panel">
+        <h2>Phonk V32 <span style="font-size:9px; opacity:0.5">ULTIMATE</span></h2>
 
         <div class="control-group">
-            <label>Track</label>
-            <input type="file" id="file-in" accept="audio/*">
-            <button id="play-btn" onclick="togglePlay()" disabled style="width:100%; margin-top:5px; background:#111; border:1px solid #333; color:#555; padding:5px; cursor:pointer;">LOAD A SONG</button>
+            <label>Audio Track</label>
+            <input type="file" id="file-audio" accept="audio/*">
+            <button id="play-btn" onclick="togglePlay()" disabled style="width:100%; margin-top:5px; padding:5px; background:#222; border:1px solid #333; color:#888;">LOAD AUDIO FIRST</button>
         </div>
         <div class="control-group">
-            <label>Image</label>
-            <input type="file" id="img-in" accept="image/*">
+            <label>Logo Image</label>
+            <input type="file" id="file-logo" accept="image/*">
+        </div>
+        <div class="control-group">
+            <label>Background (Image or Video)</label>
+            <input type="file" id="file-bg" accept="image/*,video/*">
         </div>
 
-        <h3>1. Frequency Architect</h3>
+        <h3>Frequency Architect</h3>
         <div class="sculptor-grid">
             <div class="sculpt-col">
-                <div class="graph-area" id="graph-0" onmousedown="startDrag(0, event, 'main')"><div class="audio-bar" id="bar-0"></div><div class="thresh-line" id="line-0" style="bottom: 80%;"></div></div>
-                <div class="col-controls">
-                    <div class="react-indicator" id="ind-0"></div>
-                    <button class="tweak-trigger-btn" onclick="openTweak(0)">Tweak</button>
-                    <div class="gain-wrapper"><input type="range" class="v-slider" id="gain-0" min="0.5" max="4.0" step="0.1" value="1.0"></div>
-                </div>
+                <div class="graph-area" id="g-0" onmousedown="startDrag(0, event)"><div class="audio-bar" id="b-0"></div><div class="thresh-line" id="l-0" style="bottom:80%"></div></div>
+                <div class="col-controls"><button onclick="openTweak(0)" style="font-size:8px; padding:2px;">EDIT</button></div>
             </div>
             <div class="sculpt-col">
-                <div class="graph-area" id="graph-1" onmousedown="startDrag(1, event, 'main')"><div class="audio-bar" id="bar-1"></div><div class="thresh-line" id="line-1" style="bottom: 60%;"></div></div>
-                <div class="col-controls">
-                    <div class="react-indicator" id="ind-1"></div>
-                    <button class="tweak-trigger-btn" onclick="openTweak(1)">Tweak</button>
-                    <div class="gain-wrapper"><input type="range" class="v-slider" id="gain-1" min="0.5" max="4.0" step="0.1" value="1.0"></div>
-                </div>
+                <div class="graph-area" id="g-1" onmousedown="startDrag(1, event)"><div class="audio-bar" id="b-1"></div><div class="thresh-line" id="l-1" style="bottom:60%"></div></div>
+                <div class="col-controls"><button onclick="openTweak(1)" style="font-size:8px; padding:2px;">EDIT</button></div>
             </div>
             <div class="sculpt-col">
-                <div class="graph-area" id="graph-2" onmousedown="startDrag(2, event, 'main')"><div class="audio-bar" id="bar-2"></div><div class="thresh-line" id="line-2" style="bottom: 65%;"></div></div>
-                <div class="col-controls">
-                    <div class="react-indicator" id="ind-2"></div>
-                    <button class="tweak-trigger-btn" onclick="openTweak(2)">Tweak</button>
-                    <div class="gain-wrapper"><input type="range" class="v-slider" id="gain-2" min="0.5" max="4.0" step="0.1" value="1.0"></div>
-                </div>
+                <div class="graph-area" id="g-2" onmousedown="startDrag(2, event)"><div class="audio-bar" id="b-2"></div><div class="thresh-line" id="l-2" style="bottom:65%"></div></div>
+                <div class="col-controls"><button onclick="openTweak(2)" style="font-size:8px; padding:2px;">EDIT</button></div>
             </div>
             <div class="sculpt-col">
-                <div class="graph-area" id="graph-3" onmousedown="startDrag(3, event, 'main')"><div class="audio-bar" id="bar-3"></div><div class="thresh-line" id="line-3" style="bottom: 85%;"></div></div>
-                <div class="col-controls">
-                    <div class="react-indicator" id="ind-3"></div>
-                    <button class="tweak-trigger-btn" onclick="openTweak(3)">Tweak</button>
-                    <div class="gain-wrapper"><input type="range" class="v-slider" id="gain-3" min="0.5" max="4.0" step="0.1" value="1.0"></div>
-                </div>
+                <div class="graph-area" id="g-3" onmousedown="startDrag(3, event)"><div class="audio-bar" id="b-3"></div><div class="thresh-line" id="l-3" style="bottom:85%"></div></div>
+                <div class="col-controls"><button onclick="openTweak(3)" style="font-size:8px; padding:2px;">EDIT</button></div>
             </div>
         </div>
+        <div class="control-group"><label>Pre-Amp</label><input type="range" id="pre-amp" min="0.5" max="3" step="0.1" value="1.0"></div>
 
-        <div class="control-group">
-            <label>Master Pre-Amp</label>
-            <input type="range" id="pre-amp" min="0.5" max="3.0" step="0.1" value="1.0">
-        </div>
+        <h3>VFX Rack</h3>
+        <p style="font-size:9px; color:#666;">Use dropdowns to link effects to specific bands.</p>
 
-        <h3>2. VFX Rack</h3>
-        
         <div class="vfx-row">
             <div class="vfx-name" style="color:var(--accent)">Deep Fry</div>
-            <div class="vfx-controls">
-                <input type="range" class="vfx-slider" id="amt-fry" min="0" max="1" step="0.1" value="0.0">
-                <button class="link-btn" id="link-fry" onclick="linkVfx('fry')">Link</button>
-            </div>
+            <input type="range" class="vfx-slider" id="vfx-fry-amt" min="0" max="1" step="0.1" value="0.0">
+            <select class="vfx-select" id="vfx-fry-link"><option value="-1">Global</option><option value="0">20Hz</option><option value="1">40Hz</option><option value="2">60Hz</option><option value="3">80Hz</option></select>
+        </div>
+
+        <div class="vfx-row">
+            <div class="vfx-name">Particles</div>
+            <input type="range" class="vfx-slider" id="vfx-part-amt" min="0" max="1" step="0.1" value="0.5">
+            <select class="vfx-select" id="vfx-part-link"><option value="0">20Hz</option><option value="1">40Hz</option><option value="-1">Global</option><option value="2">60Hz</option></select>
         </div>
 
         <div class="vfx-row">
             <div class="vfx-name">RGB Split</div>
-            <div class="vfx-controls">
-                <input type="range" class="vfx-slider" id="amt-rgb" min="0" max="1" step="0.1" value="0.5">
-                <button class="link-btn" id="link-rgb" onclick="linkVfx('rgb')">Link</button>
-            </div>
+            <input type="range" class="vfx-slider" id="vfx-rgb-amt" min="0" max="1" step="0.1" value="0.3">
+            <select class="vfx-select" id="vfx-rgb-link"><option value="-1">Global</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
         </div>
 
         <div class="vfx-row">
-            <div class="vfx-name">Comic Dot</div>
-            <div class="vfx-controls">
-                <input type="range" class="vfx-slider" id="amt-comic" min="0" max="1" step="0.1" value="0.3">
-                <button class="link-btn" id="link-comic" onclick="linkVfx('comic')">Link</button>
-            </div>
+            <div class="vfx-name">Neon Bloom</div>
+            <input type="range" class="vfx-slider" id="vfx-bloom-amt" min="0" max="50" step="5" value="20">
+            <div style="width:60px; font-size:8px; text-align:center; color:#555;">ALWAYS ON</div>
         </div>
 
-        <div class="vfx-row">
-            <div class="vfx-name">True VHS</div>
-            <div class="vfx-controls">
-                <input type="range" class="vfx-slider" id="amt-vhs" min="0" max="1" step="0.1" value="0.0">
-                <button class="link-btn" id="link-vhs" onclick="linkVfx('vhs')">Link</button>
-            </div>
-        </div>
-
-        <div class="vfx-row">
-            <div class="vfx-name">Mirror</div>
-            <div class="vfx-controls">
-                <input type="range" class="vfx-slider" id="amt-mirror" min="0" max="1" step="0.1" value="0">
-                <button class="link-btn" id="link-mirror" onclick="linkVfx('mirror')">Link</button>
-            </div>
-        </div>
-
-        <h3>3. Color Filters</h3>
+        <h3>World Settings</h3>
         <div class="control-group">
-            <label>Color Grade Style</label>
-            <select id="color-filter-select" onchange="updateColorFilter()">
-                <option value="none">Standard (None)</option>
-                <option value="sepia">Sepia (Western)</option>
-                <option value="grayscale">Noir (B&W)</option>
-                <option value="invert">Thermal (Invert)</option>
-                <option value="huerotate">Cyber (Hue Shift)</option>
-            </select>
+            <label>Orbit Speed (Simulated 3D)</label>
+            <input type="range" id="orbit-speed" min="0" max="2" step="0.1" value="0.5">
         </div>
-
-
-        <h3>4. Geometry</h3>
-        <div class="control-group"><label>Shape</label><select id="shape-select"><option value="square">Square</option><option value="triangle">Triangle</option><option value="round">Round</option></select></div>
-        <div class="control-group"><label>Radius</label><input type="range" id="radius" min="100" max="350" value="170"></div>
-        <div class="checkbox-row"><input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()"><span style="font-size:10px;">Auto-Match Colors</span></div>
-
+        <div class="checkbox-row" style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="checkbox" id="check-cam" onchange="toggleCam()"> <span style="font-size:10px;">Camcorder Overlay</span>
+        </div>
+        <div class="checkbox-row" style="display:flex; gap:10px;">
+            <input type="checkbox" id="check-vhs"> <span style="font-size:10px;">VHS Tape Noise</span>
+        </div>
     </div>
-
-    <input type="color" id="col-idle" value="#ffffff" style="display:none">
-    <input type="color" id="col-bass" value="#ff0033" style="display:none">
 
     <script>
         const dom = {
             playBtn: document.getElementById('play-btn'),
             canvas: document.getElementById('canvas-layer'),
             ctx: document.getElementById('canvas-layer').getContext('2d'),
+            pCanvas: document.getElementById('particle-layer'),
+            pCtx: document.getElementById('particle-layer').getContext('2d'),
             logo: document.getElementById('logo-container'),
-            flash: document.getElementById('flash-layer'),
-            stage: document.getElementById('stage-container'),
-            
-            // Overlays
-            comic: document.getElementById('comic-layer'),
-            vhs: document.getElementById('vhs-scanlines'),
-            
-            panel: document.getElementById('ui-panel'),
-            loader: document.getElementById('loader'),
-            
-            // Tweak DOM
+            pivot: document.getElementById('world-pivot'),
+            skybox: document.getElementById('skybox-container'),
+            billboard: document.getElementById('billboard-group'),
+            overlays: {
+                flash: document.getElementById('flash-layer'),
+                scan: document.getElementById('vhs-scanlines'),
+                cam: document.getElementById('camcorder-ui'),
+                speed: document.getElementById('speed-lines'),
+                scene: document.getElementById('scene-viewport')
+            },
+            bg: {
+                img: document.getElementById('bg-img'),
+                vid: document.getElementById('bg-video'),
+                def: document.getElementById('bg-default')
+            },
+            // Controls
+            bars: [0,1,2,3].map(i => document.getElementById(`b-${i}`)),
+            lines: [0,1,2,3].map(i => document.getElementById(`l-${i}`)),
+            inputs: {
+                fryAmt: document.getElementById('vfx-fry-amt'), fryLink: document.getElementById('vfx-fry-link'),
+                partAmt: document.getElementById('vfx-part-amt'), partLink: document.getElementById('vfx-part-link'),
+                rgbAmt: document.getElementById('vfx-rgb-amt'), rgbLink: document.getElementById('vfx-rgb-link'),
+                bloomAmt: document.getElementById('vfx-bloom-amt'),
+                orbit: document.getElementById('orbit-speed'),
+                cam: document.getElementById('check-cam'),
+                vhs: document.getElementById('check-vhs'),
+                preAmp: document.getElementById('pre-amp')
+            },
+            // Tweak
             tweakModal: document.getElementById('tweak-modal'),
-            tweakBar: document.getElementById('tweak-bar'),
-            tweakThresh: document.getElementById('tweak-thresh'),
-            tweakReactBtn: document.getElementById('tweak-react-btn'),
-            inputs: { attack: document.getElementById('input-attack'), decay: document.getElementById('input-decay'), gate: document.getElementById('input-gate') },
-            labels: { attack: document.getElementById('val-attack'), decay: document.getElementById('val-decay'), gate: document.getElementById('val-gate') },
-            
-            // VFX DOM
-            vfxInputs: {
-                fry: document.getElementById('amt-fry'),
-                rgb: document.getElementById('amt-rgb'),
-                comic: document.getElementById('amt-comic'),
-                vhs: document.getElementById('amt-vhs'),
-                mirror: document.getElementById('amt-mirror')
-            },
-            vfxLinks: {
-                fry: document.getElementById('link-fry'),
-                rgb: document.getElementById('link-rgb'),
-                comic: document.getElementById('link-comic'),
-                vhs: document.getElementById('link-vhs'),
-                mirror: document.getElementById('link-mirror')
-            },
-            // Filters
-            filterSelect: document.getElementById('color-filter-select'),
-            
-            // Main DOM
-            bars: [0,1,2,3].map(i => document.getElementById(`bar-${i}`)),
-            lines: [0,1,2,3].map(i => document.getElementById(`line-${i}`)),
-            gains: [0,1,2,3].map(i => document.getElementById(`gain-${i}`)),
-            inds: [0,1,2,3].map(i => document.getElementById(`ind-${i}`)),
-            colIdle: document.getElementById('col-idle'),
-            colBass: document.getElementById('col-bass'),
-            autoColor: document.getElementById('auto-color'),
-            preAmp: document.getElementById('pre-amp'),
-            shapeSelect: document.getElementById('shape-select')
+            tweakTitle: document.getElementById('tweak-title'),
+            tweakInputs: { atk: document.getElementById('inp-atk'), dec: document.getElementById('inp-dec'), gate: document.getElementById('inp-gate') }
         };
-        dom.canvas.width = window.innerWidth;
-        dom.canvas.height = window.innerHeight;
 
+        // Resize
+        function resize() {
+            dom.canvas.width = 1000; dom.canvas.height = 1000; // Fixed resolution for billboard
+            dom.pCanvas.width = 1000; dom.pCanvas.height = 1000;
+        }
+        resize();
+
+        // State
         const state = {
             isPlaying: false,
-            physics: 0,
-            thresholds: [0.8, 0.6, 0.65, 0.85],
-            extracted: { bass: '#ff0033', idle: '#ffffff' },
-            reactIndex: -1, 
-            bandDSP: [
-                { val: 0, attack: 0, decay: 0.15, gate: 0.05 },
-                { val: 0, attack: 0, decay: 0.15, gate: 0.05 },
-                { val: 0, attack: 0, decay: 0.15, gate: 0.05 },
-                { val: 0, attack: 0, decay: 0.15, gate: 0.05 }
+            cameraAngle: 0,
+            physics: 0, // Global impact
+            bands: [ // 4 Bands DSP
+                { val: 0, thresh: 0.8, atk: 0, dec: 0.15, gate: 0.05 },
+                { val: 0, thresh: 0.6, atk: 0, dec: 0.15, gate: 0.05 },
+                { val: 0, thresh: 0.65, atk: 0, dec: 0.15, gate: 0.05 },
+                { val: 0, thresh: 0.85, atk: 0, dec: 0.15, gate: 0.05 }
             ],
-            // VFX Link Map: key=effectName, value=barIndex (-1 is Global/All)
-            vfxLinks: { fry: -1, rgb: -1, comic: -1, vhs: -1, mirror: -1 },
-            currentTweakIndex: -1
+            currentTweak: -1,
+            particles: []
         };
 
-        // --- VFX LINKING ---
-        window.linkVfx = (effectName) => {
-            if (state.currentTweakIndex === -1) { alert("Please click 'Tweak' on a frequency bar first to select it."); return; }
-            if (state.vfxLinks[effectName] === state.currentTweakIndex) state.vfxLinks[effectName] = -1;
-            else state.vfxLinks[effectName] = state.currentTweakIndex;
-            updateVfxButtons();
-        };
-
-        function updateVfxButtons() {
-            for (const [key, btn] of Object.entries(dom.vfxLinks)) {
-                const linkedIdx = state.vfxLinks[key];
-                if (linkedIdx !== -1) { btn.classList.add('linked'); btn.innerText = `LINKED ${linkedIdx*20+20}Hz`; } 
-                else { btn.classList.remove('linked'); btn.innerText = "Global"; }
+        // --- PARTICLE SYSTEM ---
+        class Particle {
+            constructor() {
+                this.x = 500; this.y = 500;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 15 + 5;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.size = Math.random() * 5 + 2;
+                this.color = `rgba(255, ${Math.random()*50}, 50`; // Reddish
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.life -= 0.02;
+                this.vx *= 0.95; this.vy *= 0.95;
+            }
+            draw(ctx) {
+                ctx.fillStyle = `${this.color}, ${this.life})`;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
             }
         }
 
-        // --- FILTER LOGIC ---
-        // Helper to construct the filter string dynamically
-        function getFilterString(baseFilter, fryAmount) {
-            let s = '';
-            // Apply Base Filter
-            switch(baseFilter) {
-                case 'sepia': s += 'sepia(100%) '; break;
-                case 'grayscale': s += 'grayscale(100%) '; break;
-                case 'invert': s += 'invert(100%) '; break;
-                case 'huerotate': s += 'hue-rotate(90deg) '; break;
-            }
-            // Apply Fry (Add contrast and saturation)
-            if (fryAmount > 0) {
-                s += `contrast(${100 + (fryAmount * 200)}%) saturate(${100 + (fryAmount * 300)}%)`;
-            } else {
-                s += 'contrast(100%) saturate(100%)';
-            }
-            return s;
+        function spawnParticles(count) {
+            for(let i=0; i<count; i++) state.particles.push(new Particle());
         }
 
-        // --- TWEAK & UI LOGIC ---
-        window.openTweak = (idx) => {
-            state.currentTweakIndex = idx;
-            document.getElementById('tweak-band-id').innerText = (idx * 20 + 20) + "Hz";
-            dom.tweakThresh.style.bottom = (state.thresholds[idx] * 100) + "%";
-            const dsp = state.bandDSP[idx];
-            dom.inputs.attack.value = dsp.attack; dom.inputs.decay.value = dsp.decay; dom.inputs.gate.value = dsp.gate;
-            updateKnobs(); updateReactUI(); dom.tweakModal.classList.add('active');
-        };
-        window.closeTweak = () => { dom.tweakModal.classList.remove('active'); };
-        window.updateKnobs = () => {
-            if(state.currentTweakIndex === -1) return;
-            const idx = state.currentTweakIndex;
-            state.bandDSP[idx].attack = parseFloat(dom.inputs.attack.value);
-            state.bandDSP[idx].decay = parseFloat(dom.inputs.decay.value);
-            state.bandDSP[idx].gate = parseFloat(dom.inputs.gate.value);
-            dom.labels.attack.innerText = state.bandDSP[idx].attack.toFixed(2);
-            dom.labels.decay.innerText = state.bandDSP[idx].decay.toFixed(2);
-            dom.labels.gate.innerText = state.bandDSP[idx].gate.toFixed(2);
-        };
-        window.toggleReact = () => {
-            if(state.currentTweakIndex === -1) return;
-            state.reactIndex = (state.reactIndex === state.currentTweakIndex) ? -1 : state.currentTweakIndex;
-            updateReactUI(); updateGridIndicators();
-        };
-        function updateReactUI() {
-            if(state.reactIndex === state.currentTweakIndex) { dom.tweakReactBtn.classList.add('active'); dom.tweakReactBtn.innerText = "PHYSICS LINKED (UNLINK)"; }
-            else { dom.tweakReactBtn.classList.remove('active'); dom.tweakReactBtn.innerText = "LINK MASTER PHYSICS"; }
-        }
-        function updateGridIndicators() {
-            dom.inds.forEach((ind, i) => { if(i === state.reactIndex) ind.classList.add('active'); else ind.classList.remove('active'); });
-        }
+        // --- AUDIO ENGINE ---
+        let audioCtx, source, analyser, buffer;
         
-        // --- DRAG ---
-        let dragTarget = -1; let dragMode = '';
-        window.startDrag = (index, e, mode) => {
-            if(mode === 'tweak' && state.currentTweakIndex !== -1) dragTarget = state.currentTweakIndex; else dragTarget = index;
-            dragMode = mode; updateDrag(e);
-            document.addEventListener('mousemove', onDrag); document.addEventListener('mouseup', endDrag);
-        }
-        function onDrag(e) { if(dragTarget !== -1) updateDrag(e); }
-        function endDrag() { dragTarget = -1; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', endDrag); }
-        function updateDrag(e) {
-            const elId = (dragMode === 'tweak') ? 'tweak-graph' : `graph-${dragTarget}`;
-            const rect = document.getElementById(elId).getBoundingClientRect();
-            let y = 1.0 - ((e.clientY - rect.top) / rect.height);
-            if (y < 0) y = 0; if (y > 1) y = 1;
-            state.thresholds[dragTarget] = y;
-            dom.lines[dragTarget].style.bottom = (y * 100) + "%";
-            if(state.currentTweakIndex === dragTarget) dom.tweakThresh.style.bottom = (y * 100) + "%";
+        document.getElementById('file-audio').addEventListener('change', async e => {
+            if(!e.target.files[0]) return;
+            const ab = await e.target.files[0].arrayBuffer();
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            buffer = await audioCtx.decodeAudioData(ab);
+            analyzePreAmp(buffer);
+        });
+
+        function analyzePreAmp(buf) {
+            const raw = buf.getChannelData(0); let sum=0;
+            for(let i=0; i<raw.length; i+=5000) sum+=Math.abs(raw[i]);
+            dom.inputs.preAmp.value = (sum/(raw.length/5000) < 0.1) ? 2.0 : 1.0;
+            dom.playBtn.disabled = false; dom.playBtn.innerText = "PLAY TRACK";
         }
 
-        // --- AUDIO ---
-        let audioCtx, source, analyser, audioBuffer;
-        document.getElementById('file-in').addEventListener('change', async (e) => {
-            const file = e.target.files[0]; if(!file) return;
-            dom.loader.classList.add('active'); dom.playBtn.disabled = true; dom.playBtn.innerText = "ANALYZING...";
-            const arrayBuffer = await file.arrayBuffer();
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            try { audioBuffer = await audioCtx.decodeAudioData(arrayBuffer); analyzeTrack(audioBuffer); } 
-            catch (err) { console.error(err); dom.loader.classList.remove('active'); }
-        });
-        function analyzeTrack(buffer) {
-            const raw = buffer.getChannelData(0); let sum = 0;
-            for (let i=0; i<raw.length; i+=10000) sum += Math.abs(raw[i]);
-            dom.preAmp.value = (sum / (raw.length/10000) < 0.1) ? 2.0 : 1.0;
-            if (source) source.disconnect();
-            dom.loader.classList.remove('active'); dom.playBtn.disabled = false; dom.playBtn.innerText = "PLAY TRACK";
-        }
         window.togglePlay = () => {
-            if(!audioBuffer) return;
-            if(state.isPlaying) { if(source) source.stop(); state.isPlaying = false; dom.playBtn.innerText = "PLAY TRACK"; } 
+            if(!buffer) return;
+            if(state.isPlaying) { source.stop(); state.isPlaying = false; dom.playBtn.innerText = "PLAY TRACK"; }
             else {
                 if(audioCtx.state === 'suspended') audioCtx.resume();
-                source = audioCtx.createBufferSource(); source.buffer = audioBuffer;
+                source = audioCtx.createBufferSource(); source.buffer = buffer;
                 analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048;
                 source.connect(analyser); source.connect(audioCtx.destination);
                 source.start(0); state.isPlaying = true; dom.playBtn.innerText = "STOP TRACK"; loop();
             }
-        }
+        };
 
+        // --- MAIN LOOP ---
         function loop() {
             if(!state.isPlaying) return;
             requestAnimationFrame(loop);
-            const bufferLen = analyser.frequencyBinCount; 
-            const data = new Uint8Array(bufferLen);
+
+            // 1. Audio Analysis
+            const data = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(data);
-            const masterPre = parseFloat(dom.preAmp.value); 
-            const rawBands = [data[1], data[2], data[3], data[4]];
-            
-            let totalPhysics = 0;
-            let vfxTriggers = [0, 0, 0, 0]; 
+            const pre = parseFloat(dom.inputs.preAmp.value);
+            const raw = [data[1], data[3], data[5], data[8]]; // Sample frequencies
 
-            rawBands.forEach((rawVal, i) => {
-                let input = (rawVal / 255) * masterPre * parseFloat(dom.gains[i].value);
-                const dsp = state.bandDSP[i];
+            let globalTrigger = 0;
+            let triggers = [0,0,0,0];
+
+            raw.forEach((r, i) => {
+                let input = (r/255) * pre;
+                const dsp = state.bands[i];
+                // DSP Logic
                 if(input < dsp.gate) input = 0;
-                let current = dsp.val;
-                if (input > current) current += (input - current) * (1.0 - dsp.attack);
-                else current -= dsp.decay;
-                if(current < 0) current = 0;
-                state.bandDSP[i].val = current;
-                let processedVal = Math.min(current, 1);
+                if(input > dsp.val) dsp.val += (input - dsp.val) * (1-dsp.atk);
+                else dsp.val -= dsp.dec;
+                if(dsp.val < 0) dsp.val = 0;
 
-                dom.bars[i].style.height = (processedVal * 100) + "%";
-                dom.bars[i].style.backgroundColor = (processedVal > state.thresholds[i]) ? dom.colBass.value : '#444';
-                if(state.currentTweakIndex === i) {
-                    dom.tweakBar.style.height = (processedVal * 100) + "%";
-                    dom.tweakBar.style.backgroundColor = (processedVal > state.thresholds[i]) ? '#fff' : dom.colBass.value;
+                // Update UI Graph
+                dom.bars[i].style.height = (Math.min(dsp.val,1)*100) + "%";
+                dom.bars[i].style.background = (dsp.val > dsp.thresh) ? 'var(--accent)' : '#444';
+
+                // Triggers
+                if(dsp.val > dsp.thresh) {
+                    let force = (dsp.val - dsp.thresh) * 2;
+                    triggers[i] = force;
+                    globalTrigger += force;
                 }
-
-                const thresh = state.thresholds[i];
-                let force = 0;
-                if (processedVal > thresh) force = (processedVal - thresh);
-                vfxTriggers[i] = force; 
-                if (state.reactIndex !== -1) { if (state.reactIndex === i) totalPhysics = force * 3.0; } 
-                else { totalPhysics += force; }
             });
+            
+            // Smooth Global Physics
+            state.physics += (globalTrigger - state.physics) * 0.2;
 
-            if (totalPhysics > state.physics) state.physics = totalPhysics; else state.physics *= 0.82;
-            state.physics = Math.min(Math.max(state.physics, 0), 2.5);
+            // 2. ORBIT Logic (The Fake 3D)
+            const speed = parseFloat(dom.inputs.orbit.value);
+            state.cameraAngle += speed * 0.5;
+            // Rotate the Pivot (World)
+            dom.pivot.style.transform = `translate(-50%, -50%) rotateY(${state.cameraAngle}deg)`;
+            // Counter-Rotate the Billboard (So it faces screen)
+            dom.billboard.style.transform = `rotateY(${-state.cameraAngle}deg)`;
 
-            draw(data, bufferLen, state.physics);
-            applyFx(state.physics, vfxTriggers);
+            // 3. Draw Visuals
+            drawCanvas(data, state.physics);
+            
+            // 4. VFX & Particles
+            applyVFX(triggers, state.physics);
+            
+            // Update Timecode
+            if(dom.inputs.cam.checked) {
+                const t = audioCtx.currentTime;
+                const m = Math.floor(t/60).toString().padStart(2,'0');
+                const s = Math.floor(t%60).toString().padStart(2,'0');
+                const ms = Math.floor((t%1)*100).toString().padStart(2,'0');
+                document.getElementById('time-code').innerText = `${m}:${s}:${ms}`;
+            }
         }
 
-        function draw(data, count, phys) {
+        // --- DRAWING ---
+        function drawCanvas(data, phys) {
             const ctx = dom.ctx;
-            const cx = dom.canvas.width / 2;
-            const cy = dom.canvas.height / 2;
-            const baseRad = parseInt(document.getElementById('radius').value);
-            const maxLen = 160; const w = 25;
-            const shape = dom.shapeSelect.value;
-            const pre = parseFloat(dom.preAmp.value);
-
-            // RGB FX
-            let rgbOffset = 0;
-            const rgbLink = state.vfxLinks.rgb;
-            const rgbAmt = parseFloat(dom.vfxInputs.rgb.value);
-            if(rgbAmt > 0) {
-                 let trigger = (rgbLink === -1) ? phys : (state.bandDSP[rgbLink].val > state.thresholds[rgbLink] ? (state.bandDSP[rgbLink].val - state.thresholds[rgbLink]) * 2 : 0);
-                 rgbOffset = trigger * (rgbAmt * 20);
-            }
-
-            // MIRROR FX
-            let mirrorMode = false;
-            const mirrorLink = state.vfxLinks.mirror;
-            const mirrorAmt = parseFloat(dom.vfxInputs.mirror.value);
-            if(mirrorAmt > 0) {
-                let trigger = (mirrorLink === -1) ? phys : (state.bandDSP[mirrorLink].val > state.thresholds[mirrorLink] ? 1 : 0);
-                if(trigger > 0.1) mirrorMode = true;
-            }
-
-            const cIdle = hexToRgb(dom.colIdle.value);
-            const cBass = hexToRgb(dom.colBass.value);
-            let flashMix = Math.min(phys, 1);
+            ctx.clearRect(0,0,1000,1000);
             
-            ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
+            // Settings
+            const cx=500, cy=500;
+            const radius = 250 + (phys * 40); // Pulse radius
+            const bars = 60;
+            const bloom = parseInt(dom.inputs.bloomAmt.value);
 
-            ctx.save();
-            if(mirrorMode) { ctx.translate(cx, cy); ctx.scale(1, -1); ctx.translate(-cx, -cy); }
+            // GLOW EFFECT (Bloom)
+            if(bloom > 0) {
+                ctx.shadowBlur = bloom;
+                ctx.shadowColor = "#ff0033";
+            } else { ctx.shadowBlur = 0; }
 
-            const rad = baseRad + (phys * 30); 
-            const totalBars = 60;
-            const angleStep = Math.PI / totalBars; 
+            ctx.fillStyle = "#fff"; // Idle color
+            
+            for(let i=0; i<bars; i++) {
+                const angle = (Math.PI * 2 / bars) * i;
+                const val = (data[i*2] / 255) * parseFloat(dom.inputs.preAmp.value);
+                let h = val * 200;
+                if(phys > 0.1) h *= (1 + phys); // Expand on beat
+                if(h<5) h=5;
 
-            for(let i = 0; i < totalBars; i++) {
-                let index = 2 + i * 2;
-                let val = (data[index] / 255) * pre; if(val > 1) val = 1;
-                let h = val * maxLen;
-                if (state.reactIndex !== -1) h = h * (0.3 + (phys * 0.7));
-                if(h < 4) h = 4;
+                // Color Swap on Beat
+                if(phys > 0.2) ctx.fillStyle = "#ff0033";
+                else ctx.fillStyle = "#fff";
 
-                ctx.fillStyle = `rgb(${cIdle.r + (cBass.r - cIdle.r) * flashMix},${cIdle.g + (cBass.g - cIdle.g) * flashMix},${cIdle.b + (cBass.b - cIdle.b) * flashMix})`;
-                
-                if(rgbOffset > 1) {
-                    ctx.fillStyle = "rgba(0,255,255,0.8)";
-                    drawBar(ctx, cx - rgbOffset, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
-                    drawBar(ctx, cx - rgbOffset, cy, rad, w, h, -(i * angleStep) - (Math.PI/2), shape);
-                    ctx.fillStyle = "rgba(255,0,0,0.8)";
-                    drawBar(ctx, cx + rgbOffset, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
-                    drawBar(ctx, cx + rgbOffset, cy, rad, w, h, -(i * angleStep) - (Math.PI/2), shape);
-                } else {
-                    drawBar(ctx, cx, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
-                    drawBar(ctx, cx, cy, rad, w, h, -(i * angleStep) - (Math.PI/2), shape);
-                }
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.fillRect(radius, -10, h, 20); // Draw bar
+                ctx.restore();
             }
-            ctx.restore();
+            
+            // PARTICLE ENGINE
+            const pCtx = dom.pCtx;
+            pCtx.clearRect(0,0,1000,1000);
+            // Spawn?
+            const pLink = parseInt(dom.inputs.partLink.value);
+            const pAmt = parseFloat(dom.inputs.partAmt.value);
+            let pTrig = 0;
+            if(pLink === -1) pTrig = phys;
+            else if(state.bands[pLink].val > state.bands[pLink].thresh) pTrig = 1;
+
+            if(pTrig > 0.1 && Math.random() < pAmt) spawnParticles(5); // Spawn 5 particles
+
+            // Update & Draw Particles
+            for(let i=state.particles.length-1; i>=0; i--) {
+                const p = state.particles[i];
+                p.update();
+                p.draw(pCtx);
+                if(p.life <= 0) state.particles.splice(i, 1);
+            }
         }
 
-        function drawBar(ctx, cx, cy, rad, w, h, angle, shape) {
-            ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle); ctx.beginPath();
-            if(shape === 'square') ctx.rect(rad, -w/2, h, w);
-            else if (shape === 'triangle') { ctx.moveTo(rad, -w/2); ctx.lineTo(rad + h, 0); ctx.lineTo(rad, w/2); }
-            else if (shape === 'round') { if(ctx.roundRect) ctx.roundRect(rad, -w/2, h, w, w/2); else ctx.rect(rad, -w/2, h, w); }
-            ctx.fill(); ctx.restore();
-        }
+        // --- VFX CONTROLLER ---
+        function applyVFX(triggers, phys) {
+            // Helper to get force from Link Dropdown
+            const getForce = (linkVal) => {
+                const idx = parseInt(linkVal);
+                if(idx === -1) return phys;
+                return triggers[idx] || 0;
+            };
 
-        function applyFx(globalPhys, triggers) {
-            // Shake
-            let x=0, y=0;
-            if(globalPhys > 0.01) {
-                 const shake = globalPhys * 20; 
-                 x = (Math.random()-0.5) * shake; y = (Math.random()-0.5) * shake;
+            // 1. Deep Fry (Filter)
+            const fryAmt = parseFloat(dom.inputs.fryAmt.value);
+            const fryForce = getForce(dom.inputs.fryLink.value);
+            let filter = "";
+            if(fryAmt > 0 && fryForce > 0.1) {
+                const val = 100 + (fryForce * fryAmt * 300);
+                filter += `contrast(${val}%) saturate(${val}%) `;
             }
-            dom.logo.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${1 + globalPhys*0.1})`;
-            dom.logo.style.borderColor = `rgba(255,255,255,${0.05 + globalPhys})`;
 
-            // COMIC (Halftone)
-            const comicLink = state.vfxLinks.comic;
-            const comicAmt = parseFloat(dom.vfxInputs.comic.value);
-            let comicTrigger = (comicLink === -1) ? globalPhys : (triggers[comicLink] || 0);
-            dom.comic.style.opacity = (comicTrigger > 0.1) ? Math.min(comicTrigger * comicAmt + 0.2, 0.8) : 0;
-
-            // TRUE VHS
-            const vhsLink = state.vfxLinks.vhs;
-            const vhsAmt = parseFloat(dom.vfxInputs.vhs.value);
-            let vhsTrigger = (vhsLink === -1) ? globalPhys : (triggers[vhsLink] || 0);
-            
-            if (vhsAmt > 0) {
-                dom.vhs.style.opacity = 0.3 + (vhsTrigger * vhsAmt); 
-                if (vhsTrigger > 0.1) document.body.classList.add('vhs-active');
-                else document.body.classList.remove('vhs-active');
+            // 2. RGB Split (Canvas Offset is hard in billboard, using CSS Text Shadow/Transform on scene)
+            const rgbAmt = parseFloat(dom.inputs.rgbAmt.value);
+            const rgbForce = getForce(dom.inputs.rgbLink.value);
+            if(rgbAmt > 0 && rgbForce > 0.1) {
+                const shift = rgbForce * rgbAmt * 20;
+                dom.billboard.style.textShadow = `${shift}px 0 red, -${shift}px 0 blue`; // Hacky but works on containers
+                // Better: shift the particle layer
+                dom.pCanvas.style.transform = `translate(${shift}px, 0)`;
             } else {
-                dom.vhs.style.opacity = 0;
-                document.body.classList.remove('vhs-active');
+                dom.pCanvas.style.transform = `none`;
             }
 
-            // FRY (High Contrast/Sat)
-            const fryLink = state.vfxLinks.fry;
-            const fryAmt = parseFloat(dom.vfxInputs.fry.value);
-            let fryTrigger = (fryLink === -1) ? globalPhys : (triggers[fryLink] || 0);
-            let finalFry = (fryTrigger * fryAmt);
+            dom.overlays.scene.style.filter = filter;
 
-            // Apply Filters (Global + Fry)
-            const baseFilter = dom.filterSelect.value;
-            dom.stage.style.filter = getFilterString(baseFilter, finalFry);
+            // 3. Scanlines
+            dom.overlays.scan.style.opacity = dom.inputs.vhs.checked ? 0.3 : 0;
         }
 
-        function hexToRgb(hex) { const bigint = parseInt(hex.replace('#',''), 16); return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }; }
-        window.toggleUI = () => dom.panel.classList.toggle('hidden');
-        window.toggleAutoColor = () => { if(dom.autoColor.checked) { dom.colBass.value = state.extracted.bass; dom.colIdle.value = state.extracted.idle; } }
+        // --- UI & DRAG LOGIC ---
+        let dragTarget = -1;
+        window.startDrag = (id, e) => {
+            dragTarget = id; updateDrag(e);
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', endDrag);
+        };
+        function onDrag(e) { updateDrag(e); }
+        function endDrag() { dragTarget = -1; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', endDrag); }
+        function updateDrag(e) {
+            if(dragTarget<0) return;
+            const rect = document.getElementById(`g-${dragTarget}`).getBoundingClientRect();
+            let y = 1 - ((e.clientY - rect.top)/rect.height);
+            if(y<0)y=0; if(y>1)y=1;
+            state.bands[dragTarget].thresh = y;
+            document.getElementById(`l-${dragTarget}`).style.bottom = (y*100)+'%';
+        }
 
-        document.getElementById('img-in').addEventListener('change', e => {
-            const u = URL.createObjectURL(e.target.files[0]);
-            dom.logo.style.backgroundImage = `url(${u})`;
-            const i = new Image(); i.src = u;
-            i.onload = () => {
-                const c = document.createElement('canvas'); const x = c.getContext('2d');
-                c.width=i.width; c.height=i.height; x.drawImage(i,0,0);
-                const p1 = x.getImageData(i.width/2, i.height/2, 1, 1).data; 
-                const p2 = x.getImageData(10, 10, 1, 1).data; 
-                state.extracted.bass = "#" + ((1<<24)+(p1[0]<<16)+(p1[1]<<8)+p1[2]).toString(16).slice(1);
-                state.extracted.idle = "#" + ((1<<24)+(p2[0]<<16)+(p2[1]<<8)+p2[2]).toString(16).slice(1);
-                if(dom.autoColor.checked) { dom.colBass.value = state.extracted.bass; dom.colIdle.value = state.extracted.idle; }
+        // Tweak Modal
+        window.openTweak = (i) => {
+            state.currentTweak = i;
+            dom.tweakTitle.innerText = `${i*20+20}Hz`;
+            const b = state.bands[i];
+            dom.tweakInputs.atk.value = b.atk;
+            dom.tweakInputs.dec.value = b.dec;
+            dom.tweakInputs.gate.value = b.gate;
+            dom.tweakModal.classList.add('active');
+        };
+        window.closeTweak = () => dom.tweakModal.classList.remove('active');
+        // Live update tweak
+        ['atk','dec','gate'].forEach(k => dom.tweakInputs[k].addEventListener('input', e => {
+            if(state.currentTweak > -1) state.bands[state.currentTweak][k] = parseFloat(e.target.value);
+        }));
+
+        // File Handlers
+        document.getElementById('file-logo').addEventListener('change', e => {
+            dom.logo.style.backgroundImage = `url(${URL.createObjectURL(e.target.files[0])})`;
+        });
+        document.getElementById('file-bg').addEventListener('change', e => {
+            const f = e.target.files[0];
+            const u = URL.createObjectURL(f);
+            if(f.type.startsWith('video')) {
+                dom.bg.vid.src = u; dom.bg.vid.style.display='block'; dom.bg.img.style.display='none'; dom.bg.def.style.display='none'; dom.bg.vid.play();
+            } else {
+                dom.bg.img.src = u; dom.bg.img.style.display='block'; dom.bg.vid.style.display='none'; dom.bg.def.style.display='none';
             }
         });
-        window.onresize = () => { dom.canvas.width=window.innerWidth; dom.canvas.height=window.innerHeight; }
+        window.toggleUI = () => document.getElementById('ui-panel').classList.toggle('hidden');
+        window.toggleCam = () => dom.overlays.cam.style.display = dom.inputs.cam.checked ? 'block' : 'none';
+
     </script>
 </body>
 </html>
