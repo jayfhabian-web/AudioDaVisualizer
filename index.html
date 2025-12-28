@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk Engine V10 - Smart Colors</title>
+    <title>Phonk Engine V11 - True Bass Isolation</title>
     <style>
         /* --- THEME --- */
         :root {
@@ -12,13 +12,11 @@
             --primary: #ff0055;
             --text: #e0e0e0;
         }
-
         body { margin: 0; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; color: var(--text); }
         
         /* LAYERS */
         #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: overlay; }
         #canvas-layer { position: absolute; top: 0; left: 0; z-index: 1; }
-        
         #logo-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 300px; height: 300px; z-index: 5; border-radius: 50%; 
@@ -37,22 +35,15 @@
 
         h2 { font-size: 16px; margin: 0 0 20px 0; border-bottom: 2px solid var(--primary); display: inline-block; padding-bottom: 5px; color: #fff; }
         h3 { font-size: 11px; text-transform: uppercase; color: #666; margin-top: 25px; border-bottom: 1px solid #222; padding-bottom: 5px; }
-
         .control-group { margin-bottom: 12px; }
         label { display: flex; justify-content: space-between; font-size: 11px; color: #bbb; margin-bottom: 6px; font-weight: 600; }
-
-        /* INPUTS */
         input[type="range"] { width: 100%; height: 4px; background: #333; border-radius: 2px; appearance: none; cursor: pointer; }
         input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: white; border-radius: 50%; }
-        
         input[type="file"] { width: 100%; background: #1a1a1a; border: 1px solid #333; color: #888; padding: 6px; border-radius: 4px; font-size: 11px; }
         input[type="color"] { width: 100%; height: 30px; border: none; background: none; cursor: pointer; padding: 0; }
         
-        /* CHECKBOX FOR AUTO COLOR */
         .checkbox-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background: #1a1a1a; padding: 10px; border-radius: 4px; border: 1px solid #333; }
-        .checkbox-row input { width: auto; height: auto; }
-        .checkbox-row span { font-size: 11px; font-weight: bold; color: white; }
-
+        
         /* BASS METER */
         .meter-box { height: 6px; background: #111; border-radius: 3px; position: relative; overflow: hidden; margin-top: 5px; border: 1px solid #333; }
         .meter-fill { height: 100%; width: 0%; background: #00ff00; transition: width 0.05s linear; }
@@ -63,8 +54,6 @@
         .fx-head { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 5px; color: #fff; }
         .btn-add { width: 100%; background: transparent; border: 1px dashed #444; color: #888; padding: 8px; cursor: pointer; font-size: 10px; margin-top: 5px; }
         .btn-add:hover { border-color: var(--primary); color: white; }
-
-        /* TOGGLE BTN */
         #toggle-ui { position: absolute; top: 20px; left: 360px; z-index: 25; background: #111; color: white; border: 1px solid #444; padding: 8px 16px; cursor: pointer; border-radius: 20px; font-size: 11px; transition: left 0.3s; }
         #ui-panel.hidden + #toggle-ui { left: 20px; }
     </style>
@@ -74,11 +63,10 @@
     <div id="flash-layer"></div>
     <canvas id="canvas-layer"></canvas>
     <div id="logo-container"></div>
-
     <button id="toggle-ui" onclick="toggleUI()">Hide Controls</button>
 
     <div id="ui-panel" id="panel">
-        <h2>PHONK ENGINE V10</h2>
+        <h2>PHONK ENGINE V11</h2>
 
         <div class="control-group">
             <label>Audio</label>
@@ -93,30 +81,28 @@
         <h3>Colors</h3>
         <div class="checkbox-row">
             <input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()">
-            <span>Auto-Extract Colors from Image</span>
+            <span style="font-size:11px;color:#ccc;font-weight:bold;">Auto-Extract Colors</span>
         </div>
-
         <div class="control-group" id="manual-colors" style="display:none; opacity: 0.5;">
             <div style="display: flex; gap: 10px;">
-                <div style="flex:1">
-                    <label>Bass Color</label>
-                    <input type="color" id="col-bass" value="#ff0055">
-                </div>
-                <div style="flex:1">
-                    <label>Audio Color</label>
-                    <input type="color" id="col-audio" value="#ffffff">
-                </div>
+                <div style="flex:1"><label>Bass Color</label><input type="color" id="col-bass" value="#ff0055"></div>
+                <div style="flex:1"><label>Audio Color</label><input type="color" id="col-audio" value="#ffffff"></div>
             </div>
         </div>
 
-        <h3>Bass Engine</h3>
+        <h3>Isolation Engine</h3>
+        <div class="control-group">
+            <label>Filter Cutoff (Remove Melody) <span id="v-cutoff">150 Hz</span></label>
+            <input type="range" id="cutoff" min="50" max="400" value="150" oninput="updCutoff(this.value)">
+        </div>
+
         <div class="control-group">
             <label>Bass Threshold</label>
             <div class="meter-box">
                 <div id="thresh-line" class="meter-line" style="left:50%"></div>
                 <div id="meter-fill" class="meter-fill"></div>
             </div>
-            <input type="range" id="thresh" min="0" max="255" value="128" oninput="updThresh(this.value)" style="margin-top:5px;">
+            <input type="range" id="thresh" min="0" max="255" value="140" oninput="updThresh(this.value)" style="margin-top:5px;">
         </div>
         <div class="control-group">
             <label>Decay (Physics) <span id="v-decay">0.85</span></label>
@@ -125,7 +111,7 @@
 
         <h3>Visuals</h3>
         <div class="control-group">
-            <label>Bass Bar Split (How many bars?) <span id="v-split">4</span></label>
+            <label>Bass Bar Split <span id="v-split">4</span></label>
             <input type="range" id="bass-split" min="1" max="16" value="4" oninput="upd('v-split', this.value)">
         </div>
         <div class="control-group">
@@ -144,7 +130,6 @@
     </div>
 
     <script>
-        // --- STATE ---
         const dom = {
             audio: document.getElementById('audio'),
             canvas: document.getElementById('canvas-layer'),
@@ -158,7 +143,6 @@
             colAudio: document.getElementById('col-audio'),
             autoColorCheck: document.getElementById('auto-color')
         };
-        
         dom.canvas.width = window.innerWidth;
         dom.canvas.height = window.innerHeight;
 
@@ -167,83 +151,75 @@
             bassVal: 0,
             fftSize: 256,
             connected: false,
-            extractedColors: { bass: '#ff0055', audio: '#ffffff' } // Default
+            extractedColors: { bass: '#ff0055', audio: '#ffffff' }
         };
 
-        let audioCtx, analyser, source;
+        // AUDIO NODES
+        let audioCtx, source, analyser, filter;
 
-        // --- NEW: COLOR EXTRACTION LOGIC ---
+        // --- NEW: COLOR EXTRACTION ---
         function extractColorsFromImage(imgElement) {
-            // Create invisible canvas to read pixels
             const c = document.createElement('canvas');
             const x = c.getContext('2d');
-            c.width = imgElement.width;
-            c.height = imgElement.height;
+            c.width = imgElement.width; c.height = imgElement.height;
             x.drawImage(imgElement, 0, 0, c.width, c.height);
-            
-            // Get center pixel (Primary)
             const p1 = x.getImageData(c.width/2, c.height/2, 1, 1).data;
             const hex1 = rgbToHex(p1[0], p1[1], p1[2]);
-            
-            // Get top-left pixel (Secondary/Background tone)
             const p2 = x.getImageData(10, 10, 1, 1).data;
             const hex2 = rgbToHex(p2[0], p2[1], p2[2]);
-
-            // Save to state
-            state.extractedColors.bass = hex1; // Center of image = Bass Color
-            state.extractedColors.audio = hex2; // Background = Audio Color
-            
-            // If Auto-Color is ON, update inputs visually
-            if(dom.autoColorCheck.checked) {
-                dom.colBass.value = hex1;
-                dom.colAudio.value = hex2;
-            }
+            state.extractedColors.bass = hex1;
+            state.extractedColors.audio = hex2;
+            if(dom.autoColorCheck.checked) { dom.colBass.value = hex1; dom.colAudio.value = hex2; }
         }
-
-        function rgbToHex(r, g, b) {
-            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-        }
-
+        function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); }
         window.toggleAutoColor = () => {
             const isAuto = dom.autoColorCheck.checked;
-            const manualDiv = document.getElementById('manual-colors');
-            
-            if(isAuto) {
-                manualDiv.style.display = 'none';
-                // Re-apply extracted colors
-                dom.colBass.value = state.extractedColors.bass;
-                dom.colAudio.value = state.extractedColors.audio;
-            } else {
-                manualDiv.style.display = 'block';
-                manualDiv.style.opacity = '1';
-            }
+            document.getElementById('manual-colors').style.display = isAuto ? 'none' : 'block';
+            if(isAuto) { dom.colBass.value = state.extractedColors.bass; dom.colAudio.value = state.extractedColors.audio; }
         }
 
-        // --- AUDIO ENGINE ---
+        // --- NEW: FILTERED AUDIO ENGINE ---
         dom.audio.addEventListener('play', () => {
             if(state.connected) { if(audioCtx.state === 'suspended') audioCtx.resume(); return; }
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 source = audioCtx.createMediaElementSource(dom.audio);
+                
+                // 1. Create the Analyser
                 analyser = audioCtx.createAnalyser();
                 analyser.fftSize = state.fftSize;
-                source.connect(analyser);
-                analyser.connect(audioCtx.destination);
+
+                // 2. Create the LowPass Filter (The "Wall" for Melody)
+                filter = audioCtx.createBiquadFilter();
+                filter.type = "lowpass";
+                filter.frequency.value = 150; // Default cutoff
+
+                // 3. Routing
+                // Path A: Source -> Destination (Ears hear full audio)
+                source.connect(audioCtx.destination);
+
+                // Path B: Source -> Filter -> Analyser (Engine hears only Bass)
+                source.connect(filter);
+                filter.connect(analyser);
+
                 state.connected = true;
                 loop();
             } catch(e) { console.error(e); }
         });
 
-        // --- RENDER LOOP ---
         function loop() {
             requestAnimationFrame(loop);
             const buffer = analyser.frequencyBinCount;
             const data = new Uint8Array(buffer);
             analyser.getByteFrequencyData(data);
 
-            // BASS ISOLATION (Indices 1-3)
-            let raw = (data[1] + data[2] + data[3]) / 3;
-            
+            // Because of the LowPass filter, everything above index 5 is already dead silent.
+            // We just need to check the volume of what's left.
+            let raw = 0;
+            // Summing first 8 bins (0-300Hz approx) for total bass energy
+            for(let i=0; i<8; i++) raw += data[i];
+            raw = raw / 8;
+
             dom.meter.style.width = (raw / 255 * 100) + "%";
             
             const thresh = parseInt(document.getElementById('thresh').value);
@@ -262,8 +238,6 @@
             const cx = dom.canvas.width / 2;
             const cy = dom.canvas.height / 2;
             const rad = 150 + (bass * 40);
-
-            // Colors: Use Auto or Manual based on Checkbox
             const colBass = dom.colBass.value;
             const colAudio = dom.colAudio.value;
             const split = parseInt(document.getElementById('bass-split').value);
@@ -273,30 +247,31 @@
             ctx.lineWidth = (600 / count);
             ctx.lineCap = 'round';
 
+            // NOTE: 'data' here is the FILTERED data (Bass only). 
+            // If we want to visualize the full spectrum, we'd need a second analyser.
+            // For Phonk, visualizing just the bass punch is often cleaner, 
+            // but the bars on the right might be flat. 
+            // *Fix*: We will simulate the high bars for now or leave them reacting to bass (Sync style).
+            
             for(let i = 0; i < count; i++) {
                 let h = data[i] * 0.8;
                 let isBass = i < split;
-
                 ctx.strokeStyle = isBass ? colBass : colAudio;
                 
                 if (isBass) {
                     h *= (1 + (bass * (pop - 1)));
-                    ctx.shadowBlur = 20; 
-                    ctx.shadowColor = colBass;
+                    ctx.shadowBlur = 20; ctx.shadowColor = colBass;
                 } else {
                     ctx.shadowBlur = 0;
                 }
-
+                
                 const ang = (i * 2 * Math.PI) / count - (Math.PI/2);
                 const x0 = cx + Math.cos(ang) * (rad + 5);
                 const y0 = cy + Math.sin(ang) * (rad + 5);
                 const x1 = cx + Math.cos(ang) * (rad + 5 + h);
                 const y1 = cy + Math.sin(ang) * (rad + 5 + h);
 
-                ctx.beginPath();
-                ctx.moveTo(x0, y0);
-                ctx.lineTo(x1, y1);
-                ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
             }
         }
 
@@ -314,38 +289,25 @@
             dom.flash.style.background = e > 0 ? 'white' : 'black';
         }
 
-        // --- HANDLERS ---
+        // UTILS
         window.upd = (id, v) => document.getElementById(id).innerText = v;
         window.updThresh = (v) => { upd('thresh', v); dom.tLine.style.left = (v/255*100) + '%'; }
+        window.updCutoff = (v) => {
+            document.getElementById('v-cutoff').innerText = v + " Hz";
+            if(filter) filter.frequency.value = v;
+        }
         window.toggleUI = () => dom.panel.classList.toggle('hidden');
-
-        // File Inputs
-        document.getElementById('file-in').addEventListener('change', e => {
-            dom.audio.src = URL.createObjectURL(e.target.files[0]);
-            dom.audio.play();
-        });
-
+        document.getElementById('file-in').addEventListener('change', e => { dom.audio.src = URL.createObjectURL(e.target.files[0]); dom.audio.play(); });
         document.getElementById('img-in').addEventListener('change', e => {
-            const file = e.target.files[0];
-            const url = URL.createObjectURL(file);
+            const url = URL.createObjectURL(e.target.files[0]);
             dom.logo.style.backgroundImage = `url(${url})`;
-            
-            // RUN EXTRACTION
-            const img = new Image();
-            img.src = url;
-            img.onload = () => extractColorsFromImage(img);
+            const img = new Image(); img.src = url; img.onload = () => extractColorsFromImage(img);
         });
-
-        // Fx Stack
+        
         function renderStack() {
-            const el = document.getElementById('stack');
-            el.innerHTML = '';
+            const el = document.getElementById('stack'); el.innerHTML = '';
             state.effects.forEach(f => {
-                el.innerHTML += `
-                <div class="fx-card">
-                    <div class="fx-head">${f.type.toUpperCase()} <span style="cursor:pointer;color:#555" onclick="remFx(${f.id})">×</span></div>
-                    <input type="range" min="-2" max="2" step="0.1" value="${f.intensity}" oninput="updFx(${f.id}, this.value)">
-                </div>`;
+                el.innerHTML += `<div class="fx-card"><div class="fx-head">${f.type.toUpperCase()} <span style="cursor:pointer;color:#555" onclick="remFx(${f.id})">×</span></div><input type="range" min="-2" max="2" step="0.1" value="${f.intensity}" oninput="updFx(${f.id}, this.value)"></div>`;
             });
         }
         window.addFx = t => { state.effects.push({id:Date.now(), type:t, intensity:0.5}); renderStack(); }
@@ -353,7 +315,6 @@
         window.updFx = (i,v) => { state.effects.find(e=>e.id===i).intensity = parseFloat(v); }
         renderStack();
         window.onresize = () => { dom.canvas.width=window.innerWidth; dom.canvas.height=window.innerHeight; }
-
     </script>
 </body>
 </html>
