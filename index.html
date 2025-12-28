@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AudioDaVisualizer V17</title>
+    <title>AudioDaVisualizer V18 - High Headroom</title>
     <style>
         /* --- THEME --- */
         :root {
             --bg: #050505;
-            --panel: rgba(12, 12, 12, 0.98);
-            --border: rgba(255, 255, 255, 0.1);
+            --panel: rgba(10, 10, 10, 0.96);
+            --border: rgba(255, 255, 255, 0.15);
             --primary: #ff0055; 
             --text: #e0e0e0;
         }
@@ -22,8 +22,8 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 300px; height: 300px; z-index: 5; border-radius: 50%; 
             background-size: cover; background-position: center;
-            box-shadow: 0 0 60px rgba(0,0,0,0.8);
-            transition: transform 0.1s ease-out; /* Smooths out the shakes slightly */
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            will-change: transform; /* Performance optimization */
         }
 
         /* UI PANEL */
@@ -42,11 +42,11 @@
             text-transform: uppercase; font-weight: 900; letter-spacing: 1px;
             outline: none; cursor: text;
         }
-        h3 { font-size: 11px; text-transform: uppercase; color: #666; margin-top: 25px; border-bottom: 1px solid #333; padding-bottom: 5px; font-weight: 700; }
+        h3 { font-size: 11px; text-transform: uppercase; color: #888; margin-top: 25px; border-bottom: 1px solid #333; padding-bottom: 5px; font-weight: 700; letter-spacing: 0.5px; }
 
         /* CONTROLS */
-        .control-group { margin-bottom: 15px; }
-        label { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 5px; font-weight: 600; }
+        .control-group { margin-bottom: 18px; }
+        label { display: flex; justify-content: space-between; font-size: 11px; color: #ccc; margin-bottom: 6px; font-weight: 600; }
 
         input[type="range"] { width: 100%; height: 4px; background: #333; border-radius: 2px; appearance: none; cursor: pointer; }
         input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; background: #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(255,255,255,0.4); }
@@ -58,9 +58,12 @@
         input[type="checkbox"] { accent-color: var(--primary); transform: scale(1.1); }
 
         /* METER */
-        .meter-box { height: 8px; background: #111; border-radius: 4px; position: relative; overflow: hidden; margin-top: 5px; border: 1px solid #333; }
-        .meter-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.05s linear; }
-        .meter-line { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; z-index: 2; box-shadow: 0 0 5px white; }
+        .meter-box { height: 10px; background: #000; border-radius: 4px; position: relative; overflow: hidden; margin-top: 5px; border: 1px solid #333; }
+        .meter-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), #fff); transition: width 0.05s linear; }
+        .meter-line { position: absolute; top: 0; bottom: 0; width: 2px; background: #00ff00; z-index: 2; box-shadow: 0 0 8px #00ff00; opacity:0.8; }
+        
+        /* WARNING TEXT */
+        .warn { font-size: 9px; color: #ffaa00; margin-top: 4px; display: none; }
 
         /* TOGGLE BTN */
         #toggle-ui { position: absolute; top: 20px; left: 360px; z-index: 25; background: #111; color: white; border: 1px solid #444; padding: 8px 16px; cursor: pointer; border-radius: 20px; font-size: 11px; transition: left 0.3s; font-weight: bold; }
@@ -87,29 +90,36 @@
             <input type="file" id="img-in" accept="image/*">
         </div>
 
-        <h3>1. Bass Trigger</h3>
+        <h3>1. Signal Control (Start Here)</h3>
         
         <div class="control-group">
-            <label>Sensitivity Threshold <span id="v-thresh">140</span></label>
+            <label>Signal Trim (Fixes Loud Songs) <span id="lbl-trim">80%</span></label>
+            <input type="range" id="trim" min="10" max="100" value="80" oninput="document.getElementById('lbl-trim').innerText=this.value+'%'">
+            <div class="warn" id="warn-clip">Signal Clipping! Reduce Trim.</div>
+        </div>
+
+        <h3>2. Bass Trigger</h3>
+        
+        <div class="control-group">
+            <label>Trigger Threshold</label>
             <div class="meter-box">
-                <div id="thresh-line" class="meter-line" style="left:55%"></div>
+                <div id="thresh-line" class="meter-line" style="left:60%"></div>
                 <div id="meter-fill" class="meter-fill"></div>
             </div>
-            <input type="range" id="thresh" min="0" max="250" value="140" oninput="updThresh(this.value)" style="margin-top:8px;">
+            <input type="range" id="thresh" min="0" max="250" value="160" oninput="updThresh(this.value)" style="margin-top:8px;">
         </div>
 
         <div class="control-group">
-            <label>Bass Power (Reaction Strength)</label>
-            <input type="range" id="sens" min="1" max="4" step="0.1" value="2.0">
+            <label>Reaction Power</label>
+            <input type="range" id="sens" min="1" max="5" step="0.1" value="2.5">
         </div>
 
         <div class="control-group">
-            <label>Reaction Speed (Decay)</label>
-            <div style="font-size:9px; color:#555; margin-bottom:4px;">Left = Snappy, Right = Smooth</div>
-            <input type="range" id="decay" min="0.5" max="0.95" step="0.01" value="0.80">
+            <label>Smoothness (Decay)</label>
+            <input type="range" id="decay" min="0.5" max="0.92" step="0.01" value="0.80">
         </div>
 
-        <h3>2. Visual Structure</h3>
+        <h3>3. Visual Structure</h3>
         <div class="checkbox-row">
             <input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()">
             <span style="font-size:11px;font-weight:bold;">Auto-Extract Colors</span>
@@ -123,14 +133,14 @@
 
         <div class="control-group">
             <label>Bar Thickness</label>
-            <input type="range" id="bar-width" min="2" max="30" value="15">
+            <input type="range" id="bar-width" min="2" max="30" value="16">
         </div>
         <div class="control-group">
             <label>Bar Spacing</label>
             <input type="range" id="bar-gap" min="0" max="10" value="2">
         </div>
         <div class="control-group">
-            <label>Bar Roundness</label>
+            <label>Roundness</label>
             <input type="range" id="bar-round" min="0" max="10" value="8">
         </div>
         <div class="control-group">
@@ -138,14 +148,14 @@
             <input type="range" id="radius" min="100" max="350" value="160">
         </div>
 
-        <h3>3. Effects</h3>
+        <h3>4. Effects</h3>
         <div class="checkbox-row" style="flex-wrap:wrap;">
             <label style="margin-right:15px; cursor:pointer;"><input type="checkbox" id="fx-zoom" checked> Zoom</label>
             <label style="margin-right:15px; cursor:pointer;"><input type="checkbox" id="fx-shake" checked> Shake</label>
             <label style="cursor:pointer;"><input type="checkbox" id="fx-flash" checked> Flash</label>
         </div>
         <div class="control-group">
-            <label>Effect Master Intensity</label>
+            <label>Effect Intensity</label>
             <input type="range" id="fx-int" min="0" max="2" step="0.1" value="1.0">
         </div>
     </div>
@@ -162,7 +172,8 @@
             panel: document.getElementById('ui-panel'),
             colBass: document.getElementById('col-bass'),
             colAudio: document.getElementById('col-audio'),
-            autoColor: document.getElementById('auto-color')
+            autoColor: document.getElementById('auto-color'),
+            warn: document.getElementById('warn-clip')
         };
         dom.canvas.width = window.innerWidth;
         dom.canvas.height = window.innerHeight;
@@ -175,7 +186,6 @@
 
         let audioCtx, source, analyser;
 
-        // --- AUDIO INIT ---
         dom.audio.addEventListener('play', () => {
             if(state.connected) { if(audioCtx.state === 'suspended') audioCtx.resume(); return; }
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -188,59 +198,73 @@
             loop();
         });
 
-        // --- MAIN LOOP ---
+        // --- THE ENGINE ---
         function loop() {
             requestAnimationFrame(loop);
             const buffer = analyser.frequencyBinCount;
             const data = new Uint8Array(buffer);
             analyser.getByteFrequencyData(data);
 
-            // 1. CALCULATE BASS (First 5 bins)
+            // 1. SIGNAL TRIM (THE FIX)
+            // We reduce the incoming signal strength artificially
+            // This creates "room" for the threshold to work.
+            const trim = parseInt(document.getElementById('trim').value) / 100;
+            
+            // 2. BASS CALCULATION
+            // Calculate Average of first 6 bins (Deep Bass)
             let rawBass = 0;
-            for(let i=0; i<5; i++) rawBass += data[i];
-            rawBass /= 5;
+            for(let i=0; i<6; i++) {
+                rawBass += data[i];
+            }
+            rawBass = (rawBass / 6) * trim; // Apply Trim
 
-            // 2. APPLY THRESHOLD (CRASH PROOF VERSION)
+            // 3. THRESHOLD LOGIC
             const thresh = parseInt(document.getElementById('thresh').value);
             const sens = parseFloat(document.getElementById('sens').value);
             
-            // Visual Meter update
+            // Meter Visual
             dom.meter.style.width = Math.min(100, (rawBass / 255 * 100)) + "%";
+            
+            // Clipping Warning (If meter is full red)
+            dom.warn.style.display = (rawBass > 250) ? 'block' : 'none';
 
             let force = 0;
+            
+            // Only react if signal crosses the green line
             if(rawBass > thresh) {
-                // Safety: Avoid dividing by zero if thresh is near 255
+                // Denom prevents Divide by Zero
                 let denom = 255 - thresh;
-                if(denom < 1) denom = 1; 
+                if (denom < 5) denom = 5; 
 
-                // How much are we over the line?
-                force = (rawBass - thresh) / denom;
-                force *= sens; // Apply sensitivity
+                force = (rawBass - thresh) / denom; 
+                force = force * sens;
             }
 
-            // 3. PHYSICS & SMOOTHING
+            // 4. PHYSICS & SAFETY CLAMP
             const decay = parseFloat(document.getElementById('decay').value);
             
             if(force > state.physics) {
-                state.physics = force; // Instant Attack (Punchy)
+                state.physics = force;
             } else {
-                state.physics *= decay; // Smooth Release
+                state.physics *= decay;
             }
 
-            // Safety Clamp (Prevents Infinite Growing)
-            if(!isFinite(state.physics) || state.physics < 0.001) state.physics = 0;
-            if(state.physics > 3.0) state.physics = 3.0; // Cap max size
+            // HARD CLAMP: Prevent explosion (Infinity)
+            // We force the value to stay within 0.0 to 2.5
+            if (!isFinite(state.physics)) state.physics = 0;
+            if (state.physics > 2.5) state.physics = 2.5; 
+            if (state.physics < 0.001) state.physics = 0;
 
-            // 4. DRAW
-            draw(data, buffer, state.physics);
+            // 5. DRAW
+            draw(data, buffer, state.physics, trim);
             applyFx(state.physics);
         }
 
-        function draw(data, count, phys) {
+        function draw(data, count, phys, trim) {
             const ctx = dom.ctx;
             const cx = dom.canvas.width / 2;
             const cy = dom.canvas.height / 2;
-            const rad = parseInt(document.getElementById('radius').value) + (phys * 15);
+            const rad = parseInt(document.getElementById('radius').value) + (phys * 20);
             
             const w = parseFloat(document.getElementById('bar-width').value);
             const gap = parseFloat(document.getElementById('bar-gap').value);
@@ -252,17 +276,16 @@
             const angleStep = (2 * Math.PI) / count;
 
             for(let i = 0; i < count; i++) {
-                // Calculate Height
-                let val = data[i];
-                let h = (val / 255) * 100;
+                // We also apply TRIM to the visual bars so they don't look maxed out
+                let val = data[i] * trim;
+                let h = (val / 255) * 110;
 
-                // Color & Pop Logic
+                // Color & Pop
                 if (i < 8) { 
-                    // Bass Bars
                     ctx.fillStyle = cBass;
-                    h *= (1 + (phys * 0.5)); // Bass bars grow with physics
+                    // Bass bars get extra juice from physics
+                    h *= (1 + (phys * 0.6)); 
                 } else {
-                    // Regular Bars
                     ctx.fillStyle = cAudio;
                 }
 
@@ -281,15 +304,14 @@
             const mag = parseFloat(document.getElementById('fx-int').value);
             let s=1, x=0, y=0, f=0;
 
-            // Only apply FX if Physics > 0
             if (p > 0.01) {
-                if(document.getElementById('fx-zoom').checked) s += (p * 0.2 * mag);
+                if(document.getElementById('fx-zoom').checked) s += (p * 0.25 * mag);
                 if(document.getElementById('fx-shake').checked) {
                     const shake = p * 15 * mag;
                     x = (Math.random()-0.5) * shake;
                     y = (Math.random()-0.5) * shake;
                 }
-                if(document.getElementById('fx-flash').checked) f = p * 0.4 * mag;
+                if(document.getElementById('fx-flash').checked) f = p * 0.5 * mag;
             }
 
             dom.logo.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${s})`;
@@ -310,9 +332,7 @@
             ctx.fill();
         }
 
-        // --- UTILS ---
         window.updThresh = (v) => { 
-            document.getElementById('v-thresh').innerText = v;
             dom.tLine.style.left = (v/255*100) + "%";
         };
         window.toggleUI = () => dom.panel.classList.toggle('hidden');
@@ -322,7 +342,6 @@
             if(a) { dom.colBass.value = state.extracted.bass; dom.colAudio.value = state.extracted.audio; }
         }
 
-        // Color Extraction
         document.getElementById('img-in').addEventListener('change', e => {
             const u = URL.createObjectURL(e.target.files[0]);
             dom.logo.style.backgroundImage = `url(${u})`;
