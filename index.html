@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V35 - Render Edition</title>
+    <title>Phonk V36 - Typography Update</title>
     <style>
         /* --- THEME --- */
         :root {
@@ -22,27 +22,34 @@
             overflow: hidden; z-index: 1; display: flex; justify-content: center; align-items: center;
         }
         
-        /* LAYERS */
+        /* LAYERS (Z-INDEX ORDER IS CRITICAL) */
         #bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #bg-img, #bg-video { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; filter: grayscale(100%); }
         
+        /* WATERMARK IS NOW LAYER 2 (Behind Visualizer) */
+        #watermark-container {
+            position: absolute; z-index: 2; pointer-events: none;
+            display: flex; justify-content: center; align-items: center;
+            will-change: transform, left, top;
+        }
+        #wm-text { 
+            font-family: Impact, sans-serif; 
+            text-transform: uppercase; 
+            color: rgba(255,255,255,0.5); 
+            white-space: nowrap; 
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+        #wm-img { object-fit: contain; opacity: 0.8; }
+
         #particle-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         #visualizer-layer { position: absolute; z-index: 10; pointer-events: none; }
         
         #logo-container {
             position: absolute; width: 320px; height: 320px; border-radius: 50%; 
-            background-size: cover; background-position: center; z-index: 8;
+            background-size: cover; background-position: center; z-index: 15;
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
             border: 2px solid rgba(255,255,255,0.05);
         }
-
-        /* WATERMARK */
-        #watermark-container {
-            position: absolute; z-index: 20; pointer-events: none;
-            display: flex; justify-content: center; align-items: center;
-        }
-        #wm-text { font-family: Impact, sans-serif; text-transform: uppercase; color: rgba(255,255,255,0.5); letter-spacing: 5px; white-space: nowrap; }
-        #wm-img { object-fit: contain; opacity: 0.8; }
 
         /* OVERLAYS */
         #vfx-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; mix-blend-mode: overlay; }
@@ -56,13 +63,20 @@
         }
         #ui-panel.hidden { transform: translateX(-100%); }
 
-        /* Controls */
+        /* Typography */
         h2 { font-size: 14px; color: #fff; margin: 0 0 15px 0; border-left: 3px solid var(--accent); padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 10px; color: #666; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
+        
         .control-group { margin-bottom: 12px; }
         label { display: flex; justify-content: space-between; font-size: 9px; color: #888; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
-        select, input[type="text"], input[type="file"] { width: 100%; background: #0a0a0a; border: 1px solid #333; color: #ccc; padding: 6px; font-size: 10px; text-transform: uppercase; border-radius: 4px; outline: none; }
         
+        /* Inputs */
+        select, input[type="text"], input[type="file"], input[type="color"] { 
+            width: 100%; background: #0a0a0a; border: 1px solid #333; color: #ccc; 
+            padding: 6px; font-size: 10px; text-transform: uppercase; border-radius: 4px; outline: none; 
+        }
+        input[type="color"] { padding: 0; height: 25px; cursor: pointer; }
+
         button.action-btn { width: 100%; padding: 8px; background: var(--btn-bg); border: 1px solid #333; color: #ccc; cursor: pointer; font-size: 9px; font-weight: bold; transition: 0.2s; }
         button.action-btn:hover { background: #333; color: #fff; }
         
@@ -70,6 +84,14 @@
         #rec-btn { background: #300; border-color: #500; color: #f88; }
         #rec-btn.recording { background: #f00; color: #fff; animation: pulse-rec 1s infinite; box-shadow: 0 0 15px #f00; }
         @keyframes pulse-rec { 0% { opacity:1; } 50% { opacity:0.7; } 100% { opacity:1; } }
+
+        /* Toggle Buttons (Bold/Italic) */
+        .toggle-row { display: flex; gap: 5px; margin-top: 5px; }
+        .style-btn { 
+            flex: 1; padding: 6px; background: #222; border: 1px solid #333; color: #666; 
+            cursor: pointer; font-size: 10px; font-weight: bold; border-radius: 3px; 
+        }
+        .style-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 
         /* Sliders */
         input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; background: #222; border-radius: 2px; outline: none; }
@@ -81,9 +103,7 @@
         .graph-area { flex: 1; position: relative; border-bottom: 1px solid #333; cursor: row-resize; overflow: hidden; background: rgba(255,255,255,0.02); }
         .audio-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #555; opacity: 0.8; transition: height 0.05s linear; }
         .thresh-line { position: absolute; left: 0; width: 100%; height: 2px; background: #fff; box-shadow: 0 0 8px #fff; pointer-events: none; }
-        
         .col-controls { height: 100px; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; background: #050505; }
-        .edit-btn { width: 100%; font-size: 8px; padding: 4px; background: #181818; border: 1px solid #333; color: #888; cursor: pointer; margin-bottom: 4px; }
         
         /* Vertical Sliders */
         .sliders-row { display: flex; justify-content: space-around; height: 65px; }
@@ -94,16 +114,8 @@
             transform: rotate(-90deg) translate(-25px, 0); margin: 30px 0; background: #333; cursor: pointer; 
         }
 
-        /* VFX Row */
-        .vfx-row { display: flex; align-items: center; background: #0e0e0e; border: 1px solid #222; padding: 6px; margin-bottom: 6px; border-radius: 4px; gap: 6px; }
-        .vfx-name { width: 60px; font-size: 9px; font-weight: bold; color: #bbb; }
-        .vfx-slider { flex: 1; }
-        .vfx-inv { font-size: 8px; padding: 2px 4px; cursor: pointer; background: #222; color: #666; border: 1px solid #333; border-radius: 3px; }
-        .vfx-inv.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-        .vfx-select { width: 55px; font-size: 8px; height: 18px; padding: 0; background: #151515; border-color: #333; }
-
-        /* Watermark Controls */
-        .wm-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        /* Watermark Grid */
+        .wm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
 
         /* Tweak Modal */
         #tweak-modal { 
@@ -136,8 +148,8 @@
         </div>
 
         <div id="watermark-container">
-            <span id="wm-text" style="font-size: 40px; display:none;">YOUR TEXT</span>
-            <img id="wm-img" src="" style="display:none; max-width: 200px;">
+            <span id="wm-text" style="font-size: 60px; display:none;">PHONK</span>
+            <img id="wm-img" src="" style="display:none; max-width: 300px;">
         </div>
 
         <canvas id="particle-layer"></canvas>
@@ -149,33 +161,73 @@
     <button id="toggle-ui" onclick="toggleUI()">OPEN ENGINE</button>
 
     <div id="ui-panel">
-        <h2>Phonk V35 <span style="font-size:9px; opacity:0.5">RENDERER</span></h2>
+        <h2>Phonk V36 <span style="font-size:9px; opacity:0.5">TYPOGRAPHY</span></h2>
 
         <div class="control-group" style="background:#111; padding:10px; border:1px solid #222; border-radius:4px;">
-            <label style="color:#fff; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:10px;">Export Video</label>
+            <label style="color:#fff; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:10px;">Render Video</label>
             <button class="action-btn" id="rec-btn" onclick="toggleRecord()" disabled>● START RECORDING</button>
-            <p style="font-size:8px; color:#666; margin-top:5px;">Plays track & records screen. Press STOP to save .webm file.</p>
+            <p style="font-size:8px; color:#666; margin-top:5px;">Plays track & saves .webm file.</p>
         </div>
 
         <div class="control-group">
             <label>Files</label>
             <input type="file" id="file-audio" accept="audio/*">
-            <button class="action-btn" id="play-btn" onclick="togglePlay()" disabled style="margin-top:5px;">PLAY PREVIEW</button>
-        </div>
-        <div class="control-group">
-            <label>Assets</label>
-            <input type="file" id="file-logo" accept="image/*" title="Center Logo" style="margin-bottom:2px;">
-            <input type="file" id="file-bg" accept="image/*,video/*" title="Background">
+            <button class="action-btn" id="play-btn" onclick="togglePlay()" disabled style="margin-top:5px;">PLAY TRACK</button>
         </div>
 
-        <h3>Architect</h3>
+        <h3>Watermark / Tag</h3>
+        <div class="control-group">
+            <label>Content</label>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="wm-text-input" placeholder="ENTER TEXT..." oninput="updateWMText()">
+                <input type="file" id="wm-file" accept="image/*" style="width:80px;" title="Img">
+            </div>
+        </div>
+
+        <div class="control-group" id="wm-style-group">
+            <label>Typography</label>
+            <select id="wm-font" onchange="updateWMStyle()">
+                <option value="Impact, sans-serif">Impact (Phonk Classic)</option>
+                <option value="'Arial Black', sans-serif">Arial Black (Bold)</option>
+                <option value="'Courier New', monospace">Courier (Glitch)</option>
+                <option value="'Brush Script MT', cursive">Brush Script (Sig)</option>
+                <option value="serif">Times (Elegant)</option>
+            </select>
+            
+            <div class="toggle-row">
+                <button class="style-btn" id="btn-bold" onclick="toggleStyle('bold')">BOLD</button>
+                <button class="style-btn" id="btn-italic" onclick="toggleStyle('italic')">ITALIC</button>
+                <input type="color" id="wm-color" value="#ffffff" oninput="updateWMStyle()" style="width:40px; height:27px; border:none;">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="wm-grid">
+                <div>
+                    <label>Mode</label>
+                    <select id="wm-mode">
+                        <option value="static">Static (Center)</option>
+                        <option value="pulse">Pulse (Beat)</option>
+                        <option value="bounce">DVD Bounce</option>
+                        <option value="both">Bounce + Pulse</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Opacity</label>
+                    <input type="range" id="wm-opacity" min="0" max="1" step="0.1" value="0.5" oninput="updateWMOpacity()">
+                </div>
+            </div>
+        </div>
+
+        <h3>Audio Architect</h3>
         <div class="control-group">
             <label>Visual Smoothness</label>
-            <input type="range" id="smooth-factor" min="0.1" max="0.9" step="0.05" value="0.5">
+            <input type="range" id="smooth-factor" min="0.1" max="0.9" step="0.05" value="0.6">
         </div>
 
         <div class="sculptor-grid">
             <script>
+                // Generating 4 bands
                 for(let i=0; i<4; i++){
                     document.write(`
                     <div class="sculpt-col">
@@ -184,7 +236,7 @@
                             <div class="thresh-line" id="l-${i}" style="bottom:${[80,60,65,85][i]}%"></div>
                         </div>
                         <div class="col-controls">
-                            <button class="edit-btn" onclick="openTweak(${i})">DSP</button>
+                            <button class="action-btn" style="font-size:8px; padding:2px;" onclick="openTweak(${i})">DSP</button>
                             <div class="sliders-row">
                                 <div class="v-slider-group"><div class="v-slider-label">G</div><input type="range" class="v-slider" id="gain-${i}" min="0.1" max="3" step="0.1" value="1.0"></div>
                                 <div class="v-slider-group"><div class="v-slider-label" style="color:var(--accent)">P</div><input type="range" class="v-slider" id="punch-${i}" min="1" max="5" step="0.1" value="1.0"></div>
@@ -196,37 +248,6 @@
         </div>
         <div class="control-group"><label>Pre-Amp</label><input type="range" id="pre-amp" min="0.5" max="3" step="0.1" value="1.0"></div>
 
-        <h3>VFX Rack</h3>
-        <div class="vfx-row">
-            <div class="vfx-name" style="color:var(--accent)">Deep Fry</div>
-            <input type="range" class="vfx-slider" id="vfx-fry-amt" min="0" max="1" step="0.1" value="0.0">
-            <div class="vfx-inv" id="inv-fry" onclick="toggleInv('fry')">INV</div>
-            <select class="vfx-select" id="link-fry"><option value="-1">Glob</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
-        </div>
-        <div class="vfx-row">
-            <div class="vfx-name">RGB Split</div>
-            <input type="range" class="vfx-slider" id="vfx-rgb-amt" min="0" max="1" step="0.1" value="0.3">
-            <div class="vfx-inv" id="inv-rgb" onclick="toggleInv('rgb')">INV</div>
-            <select class="vfx-select" id="link-rgb"><option value="-1">Glob</option><option value="0">20Hz</option><option value="1">40Hz</option></select>
-        </div>
-        <div class="vfx-row">
-            <div class="vfx-name">Particles</div>
-            <input type="range" class="vfx-slider" id="vfx-part-amt" min="0" max="1" step="0.1" value="0.5">
-            <div class="vfx-inv" id="inv-part" onclick="toggleInv('part')">INV</div>
-            <select class="vfx-select" id="link-part"><option value="0">20Hz</option><option value="1">40Hz</option><option value="-1">Glob</option></select>
-        </div>
-
-        <h3>Watermark</h3>
-        <div class="control-group">
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="wm-text-input" placeholder="TEXT..." oninput="updateWM()">
-                <input type="file" id="wm-file" accept="image/*" style="width:80px;" title="Img">
-            </div>
-        </div>
-        <div class="wm-controls">
-            <select id="wm-mode"><option value="static">Static</option><option value="pulse">Pulse</option><option value="bounce">Bounce</option><option value="both">Both</option></select>
-            <input type="range" id="wm-opacity" min="0" max="1" step="0.1" value="0.8" oninput="updateWM()">
-        </div>
         <div style="height:50px;"></div>
     </div>
 
@@ -251,36 +272,32 @@
             pCanvas: document.getElementById('particle-layer'),
             pCtx: document.getElementById('particle-layer').getContext('2d'),
             stage: document.getElementById('stage'),
-            // UI
+            // UI Inputs
             bars: [0,1,2,3].map(i => document.getElementById(`b-${i}`)),
             lines: [0,1,2,3].map(i => document.getElementById(`l-${i}`)),
             gains: [0,1,2,3].map(i => document.getElementById(`gain-${i}`)),
             punches: [0,1,2,3].map(i => document.getElementById(`punch-${i}`)),
-            inputs: {
-                smooth: document.getElementById('smooth-factor'),
-                preAmp: document.getElementById('pre-amp'),
-                fryAmt: document.getElementById('vfx-fry-amt'), fryLink: document.getElementById('link-fry'),
-                rgbAmt: document.getElementById('vfx-rgb-amt'), rgbLink: document.getElementById('link-rgb'),
-                partAmt: document.getElementById('vfx-part-amt'), partLink: document.getElementById('link-part')
-            },
+            inputs: { smooth: document.getElementById('smooth-factor'), preAmp: document.getElementById('pre-amp') },
+            // Watermark
             wm: {
                 cont: document.getElementById('watermark-container'), text: document.getElementById('wm-text'),
                 img: document.getElementById('wm-img'), input: document.getElementById('wm-text-input'),
-                mode: document.getElementById('wm-mode'), op: document.getElementById('wm-opacity')
+                mode: document.getElementById('wm-mode'), op: document.getElementById('wm-opacity'),
+                font: document.getElementById('wm-font'), color: document.getElementById('wm-color'),
+                btnBold: document.getElementById('btn-bold'), btnItalic: document.getElementById('btn-italic')
             },
             // Tweak
             tweakModal: document.getElementById('tweak-modal'),
             tweakInputs: { atk: document.getElementById('inp-atk'), dec: document.getElementById('inp-dec'), gate: document.getElementById('inp-gate') }
         };
 
-        // --- High DPI Setup ---
+        // --- DPI & Resize ---
         function resize() {
             const dpr = window.devicePixelRatio || 1;
             const w = window.innerWidth; const h = window.innerHeight;
             dom.canvas.width = w * dpr; dom.canvas.height = h * dpr;
             dom.canvas.style.width = w + "px"; dom.canvas.style.height = h + "px";
             dom.ctx.scale(dpr, dpr);
-
             dom.pCanvas.width = w * dpr; dom.pCanvas.height = h * dpr;
             dom.pCanvas.style.width = w + "px"; dom.pCanvas.style.height = h + "px";
             dom.pCtx.scale(dpr, dpr);
@@ -288,184 +305,95 @@
         window.addEventListener('resize', resize);
         resize();
 
+        // --- State ---
         const state = {
             isPlaying: false, isRecording: false,
             physics: 0,
-            inverts: { fry: false, rgb: false, part: false },
             bands: [0,1,2,3].map((_,i) => ({ val:0, thresh:[0.8,0.6,0.65,0.85][i], atk:0, dec:0.15, gate:0.05 })),
             currentTweak: -1,
             particles: [],
-            wm: { x: window.innerWidth/2, y: window.innerHeight/4, dx: 3, dy: 3 }
+            // Watermark Physics
+            wm: { x: window.innerWidth/2, y: window.innerHeight/3, dx: 2, dy: 2, isBold: false, isItalic: false }
         };
 
-        // --- AUDIO & RECORDING ---
-        let audioCtx, source, analyser, buffer, dest, mediaRecorder, chunks = [];
+        // --- Audio Logic ---
+        let audioCtx, source, analyser, buffer, dest, mediaRecorder, chunks=[];
         
         document.getElementById('file-audio').addEventListener('change', async e => {
             if(!e.target.files[0]) return;
             const ab = await e.target.files[0].arrayBuffer();
             audioCtx = new (window.AudioContext||window.webkitAudioContext)();
             buffer = await audioCtx.decodeAudioData(ab);
-            
-            // Analyze volume for Pre-Amp
-            const raw = buffer.getChannelData(0); let s=0; 
-            for(let i=0;i<raw.length;i+=5000)s+=Math.abs(raw[i]);
+            // Auto Pre-Amp
+            const raw = buffer.getChannelData(0); let s=0; for(let i=0;i<raw.length;i+=5000)s+=Math.abs(raw[i]);
             dom.inputs.preAmp.value = (s/(raw.length/5000) < 0.1) ? 2.0 : 1.0;
-            
-            dom.playBtn.disabled=false; dom.recBtn.disabled=false;
-            dom.playBtn.innerText="PLAY PREVIEW";
+            dom.playBtn.disabled=false; dom.recBtn.disabled=false; dom.playBtn.innerText="PLAY TRACK";
         });
 
-        window.togglePlay = () => {
-            if(!buffer) return;
-            if(state.isPlaying) { stopAll(); }
-            else { startAudio(false); }
-        };
+        window.togglePlay = () => { if(!buffer)return; if(state.isPlaying) stopAll(); else startAudio(false); };
+        window.toggleRecord = () => { if(!buffer)return; if(state.isRecording) { mediaRecorder.stop(); stopAll(); state.isRecording=false; dom.recBtn.classList.remove('recording'); dom.recBtn.innerText="● START RECORDING"; } else { startAudio(true); state.isRecording=true; dom.recBtn.classList.add('recording'); dom.recBtn.innerText="■ STOP & SAVE"; } };
 
-        window.toggleRecord = () => {
-            if(!buffer) return;
-            if(state.isRecording) {
-                mediaRecorder.stop();
-                stopAll();
-                dom.recBtn.classList.remove('recording');
-                dom.recBtn.innerText = "● START RECORDING";
-                state.isRecording = false;
-            } else {
-                startAudio(true);
-                dom.recBtn.classList.add('recording');
-                dom.recBtn.innerText = "■ STOP & SAVE";
-                state.isRecording = true;
-            }
-        };
-
-        function startAudio(recording) {
+        function startAudio(rec) {
             if(audioCtx.state === 'suspended') audioCtx.resume();
             source = audioCtx.createBufferSource(); source.buffer=buffer;
-            analyser = audioCtx.createAnalyser(); analyser.fftSize=2048;
-            analyser.smoothingTimeConstant = parseFloat(dom.inputs.smooth.value); // Hardware smoothing
+            analyser = audioCtx.createAnalyser(); analyser.fftSize=2048; 
+            analyser.smoothingTimeConstant = parseFloat(dom.inputs.smooth.value);
+            source.connect(analyser); source.connect(audioCtx.destination);
 
-            // Routing
-            source.connect(analyser); 
-            source.connect(audioCtx.destination); // Hear it
-
-            if(recording) {
-                // Combine Canvas Stream + Audio Stream
-                dest = audioCtx.createMediaStreamDestination();
-                source.connect(dest);
-                const canvasStream = dom.stage.getElementsByTagName('canvas')[1].captureStream(60); // Visualizer layer
-                // Note: Capturing DOM elements (divs) isn't directly possible with MediaRecorder easily without html2canvas which is slow.
-                // For V35, we only capture the canvas layer + audio to keep it fast. To capture full DOM requires complex libs.
-                // We will combine the canvas stream.
-                
-                const combinedStream = new MediaStream([
-                    ...canvasStream.getVideoTracks(),
-                    ...dest.stream.getAudioTracks()
-                ]);
-                
-                mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
-                chunks = [];
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = e => {
-                    const blob = new Blob(chunks, { type: 'video/webm' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.href=url; a.download='phonk_export.webm'; a.click();
-                };
+            if(rec) {
+                dest = audioCtx.createMediaStreamDestination(); source.connect(dest);
+                const combined = new MediaStream([ ...dom.stage.getElementsByTagName('canvas')[1].captureStream(60).getVideoTracks(), ...dest.stream.getAudioTracks() ]);
+                mediaRecorder = new MediaRecorder(combined, { mimeType:'video/webm; codecs=vp9' });
+                chunks=[]; mediaRecorder.ondataavailable=e=>chunks.push(e.data);
+                mediaRecorder.onstop=()=>{ const b=new Blob(chunks,{type:'video/webm'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='phonk_export.webm'; a.click(); };
                 mediaRecorder.start();
             }
-
-            source.start(0); state.isPlaying=true; 
-            if(!recording) dom.playBtn.innerText="STOP PREVIEW";
-            loop();
+            source.start(0); state.isPlaying=true; if(!rec) dom.playBtn.innerText="STOP TRACK"; loop();
         }
+        function stopAll() { if(source) source.stop(); state.isPlaying=false; dom.playBtn.innerText="PLAY TRACK"; }
 
-        function stopAll() {
-            if(source) source.stop();
-            state.isPlaying=false;
-            dom.playBtn.innerText="PLAY PREVIEW";
-        }
-
-        // --- MAIN LOOP ---
+        // --- Loop ---
         function loop() {
             if(!state.isPlaying) return;
             requestAnimationFrame(loop);
-
-            const data = new Uint8Array(analyser.frequencyBinCount);
-            analyser.getByteFrequencyData(data);
-            
-            // Smoothing Update
+            const data = new Uint8Array(analyser.frequencyBinCount); analyser.getByteFrequencyData(data);
             analyser.smoothingTimeConstant = parseFloat(dom.inputs.smooth.value);
 
-            const pre = parseFloat(dom.inputs.preAmp.value);
-            const raw = [data[1], data[3], data[5], data[8]];
-            let globalTrig = 0;
-            const triggers = [0,0,0,0];
+            let globalTrig = 0; const pre = parseFloat(dom.inputs.preAmp.value);
+            const raw = [data[1], data[3], data[5], data[8]]; // Sub, Low, Mid, High
 
             raw.forEach((r, i) => {
-                const gain = parseFloat(dom.gains[i].value);
-                const punch = parseFloat(dom.punches[i].value);
+                const gain = parseFloat(dom.gains[i].value); const punch = parseFloat(dom.punches[i].value);
                 let input = (r/255) * pre * gain;
-                
                 const dsp = state.bands[i];
                 if(input < dsp.gate) input = 0;
-                
-                // Visual LERP (Smoothing)
-                if(input > dsp.val) dsp.val += (input - dsp.val) * (1-dsp.atk);
-                else dsp.val -= dsp.dec;
+                if(input > dsp.val) dsp.val += (input - dsp.val) * (1-dsp.atk); else dsp.val -= dsp.dec;
                 if(dsp.val < 0) dsp.val = 0;
 
-                let visualVal = dsp.val;
-                if (dsp.val > dsp.thresh) {
-                    let excess = dsp.val - dsp.thresh;
-                    visualVal = dsp.thresh + (excess * punch);
-                }
+                let visVal = dsp.val;
+                if(dsp.val > dsp.thresh) { visVal = dsp.thresh + (dsp.val - dsp.thresh) * punch; globalTrig += (dsp.val - dsp.thresh)*2; }
                 
-                // DOM Bar Update
-                dom.bars[i].style.height = Math.min(visualVal * 100, 100) + "%";
-                dom.bars[i].style.background = (dsp.val > dsp.thresh) ? 'var(--accent)' : '#555';
-
-                if(dsp.val > dsp.thresh) {
-                    triggers[i] = (dsp.val - dsp.thresh) * 2;
-                    globalTrig += triggers[i];
-                }
+                dom.bars[i].style.height = Math.min(visVal*100, 100)+"%";
+                dom.bars[i].style.background = (dsp.val>dsp.thresh) ? 'var(--accent)' : '#555';
             });
 
-            // Smooth Physics
             state.physics += (globalTrig - state.physics) * 0.1;
-            
             drawVisuals(data, state.physics);
-            updateWatermark(state.physics);
-            applyVFX(triggers, state.physics);
+            updateWatermarkPhysics(state.physics);
         }
 
-        // --- DRAW ---
-        class Particle {
-            constructor() {
-                this.x = window.innerWidth/2; this.y = window.innerHeight/2;
-                const a = Math.random()*Math.PI*2; const s = Math.random()*15+5;
-                this.vx = Math.cos(a)*s; this.vy = Math.sin(a)*s;
-                this.life = 1.0; this.size = Math.random()*5+2;
-            }
-            update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.02; this.vx*=0.95; this.vy*=0.95; }
-            draw(ctx) { ctx.fillStyle=`rgba(255,50,50,${this.life})`; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); }
-        }
-
+        // --- Visuals ---
         function drawVisuals(data, phys) {
-            const ctx = dom.ctx; 
-            const w = dom.canvas.width / (window.devicePixelRatio||1);
-            const h = dom.canvas.height / (window.devicePixelRatio||1);
-            const cx = w/2; const cy = h/2;
-
+            const ctx = dom.ctx; const w=dom.canvas.width/(window.devicePixelRatio||1); const h=dom.canvas.height/(window.devicePixelRatio||1);
+            const cx=w/2; const cy=h/2;
             ctx.clearRect(0,0,w,h);
             
-            const bars = 60; 
-            const rad = 200 + (phys*40);
-            
-            if(phys > 0.2) { ctx.shadowBlur = 20; ctx.shadowColor = "#ff0033"; } else { ctx.shadowBlur = 0; }
+            const bars=60; const rad=200+(phys*40);
+            if(phys>0.2){ ctx.shadowBlur=20; ctx.shadowColor="#ff0033"; } else ctx.shadowBlur=0;
 
             for(let i=0; i<bars; i++) {
                 let val = (data[i*2]/255) * parseFloat(dom.inputs.preAmp.value);
-                let hVal = val * 220;
-                if(phys>0.1) hVal *= (1+phys);
+                let hVal = val * 220; if(phys>0.1) hVal*=(1+phys);
                 ctx.save(); ctx.translate(cx,cy); ctx.rotate((Math.PI*2/bars)*i);
                 ctx.fillStyle = (phys>0.2) ? "#ff0033" : "#fff";
                 ctx.fillRect(rad, -6, Math.max(hVal,5), 12);
@@ -474,102 +402,81 @@
 
             // Particles
             const pCtx = dom.pCtx; pCtx.clearRect(0,0,w,h);
-            const pLink = parseInt(dom.inputs.inputs.partLink.value);
-            let pForce = (pLink===-1) ? phys : (state.bands[pLink]?.val > state.bands[pLink]?.thresh ? 1 : 0);
-            if(state.inverts.part) pForce = 1-pForce;
-
-            if(pForce > 0.1 && Math.random()<parseFloat(dom.inputs.inputs.partAmt.value)) 
-                for(let k=0;k<5;k++) state.particles.push(new Particle());
-            
+            if(phys > 0.3 && Math.random()<0.3) state.particles.push({x:w/2,y:h/2,vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,life:1,size:Math.random()*4+2});
             for(let i=state.particles.length-1; i>=0; i--) {
-                state.particles[i].update(); state.particles[i].draw(pCtx);
-                if(state.particles[i].life<=0) state.particles.splice(i,1);
+                let p = state.particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.02; p.vx*=0.95; p.vy*=0.95;
+                pCtx.fillStyle=`rgba(255,50,50,${p.life})`; pCtx.beginPath(); pCtx.arc(p.x,p.y,p.size,0,Math.PI*2); pCtx.fill();
+                if(p.life<=0) state.particles.splice(i,1);
             }
         }
 
-        // --- WATERMARK & VFX ---
-        function updateWatermark(phys) {
+        // --- Watermark Logic ---
+        function updateWMText() {
+            const txt = dom.wm.input.value;
+            if(txt) { dom.wm.text.innerText = txt; dom.wm.text.style.display='block'; dom.wm.img.style.display='none'; }
+            else dom.wm.text.style.display='none';
+        }
+        function updateWMStyle() {
+            dom.wm.text.style.fontFamily = dom.wm.font.value;
+            dom.wm.text.style.color = dom.wm.color.value;
+            dom.wm.text.style.fontWeight = state.wm.isBold ? 'bold' : 'normal';
+            dom.wm.text.style.fontStyle = state.wm.isItalic ? 'italic' : 'normal';
+        }
+        function updateWMOpacity() { dom.wm.cont.style.opacity = dom.wm.op.value; }
+        
+        window.toggleStyle = (type) => {
+            if(type==='bold') { state.wm.isBold = !state.wm.isBold; dom.wm.btnBold.classList.toggle('active'); }
+            if(type==='italic') { state.wm.isItalic = !state.wm.isItalic; dom.wm.btnItalic.classList.toggle('active'); }
+            updateWMStyle();
+        };
+
+        function updateWatermarkPhysics(phys) {
             const wm = dom.wm.cont; const mode = dom.wm.mode.value;
-            const rect = wm.getBoundingClientRect();
             
             if(mode === 'bounce' || mode === 'both') {
+                const rect = wm.getBoundingClientRect();
                 state.wm.x += state.wm.dx; state.wm.y += state.wm.dy;
-                if(state.wm.x <= 0 || state.wm.x + rect.width >= window.innerWidth) state.wm.dx *= -1;
-                if(state.wm.y <= 0 || state.wm.y + rect.height >= window.innerHeight) state.wm.dy *= -1;
+                // Boundary Checks
+                if(state.wm.x <= 0) { state.wm.x=0; state.wm.dx *= -1; }
+                if(state.wm.x + rect.width >= window.innerWidth) { state.wm.x=window.innerWidth-rect.width; state.wm.dx *= -1; }
+                if(state.wm.y <= 0) { state.wm.y=0; state.wm.dy *= -1; }
+                if(state.wm.y + rect.height >= window.innerHeight) { state.wm.y=window.innerHeight-rect.height; state.wm.dy *= -1; }
+                
                 wm.style.left = state.wm.x + 'px'; wm.style.top = state.wm.y + 'px';
                 wm.style.transform = 'none';
             } else {
-                wm.style.left = '50%'; wm.style.top = '20%'; wm.style.transform = 'translate(-50%, -50%)';
+                wm.style.left = '50%'; wm.style.top = '25%'; wm.style.transform = 'translate(-50%, -50%)';
             }
 
-            let scale = 1;
-            if(mode === 'pulse' || mode === 'both') scale = 1 + (phys * 0.5);
+            let scale = 1; 
+            if(mode === 'pulse' || mode === 'both') scale = 1 + (phys * 0.4);
             
-            if(mode === 'bounce' || mode === 'both') wm.style.transform = `scale(${scale})`;
-            else wm.style.transform = `translate(-50%, -50%) scale(${scale})`;
+            if(mode !== 'bounce' && mode !== 'both') wm.style.transform = `translate(-50%, -50%) scale(${scale})`;
+            else wm.style.transform = `scale(${scale})`;
         }
 
-        function applyVFX(trigs, phys) {
-            const getVal = (idx, inv) => {
-                let v = (parseInt(idx)===-1) ? phys : (trigs[idx]||0);
-                return inv ? (1-v) : v;
-            };
-
-            // Fry
-            const fAmt = parseFloat(dom.inputs.inputs.fryAmt.value);
-            const fVal = getVal(dom.inputs.inputs.fryLink.value, state.inverts.fry);
-            let f = "grayscale(100%) ";
-            if(fAmt>0 && fVal>0.1) f += `contrast(${100+(fVal*fAmt*400)}%) saturate(${100+(fVal*fAmt*400)}%)`;
-            dom.stage.style.filter = f;
-
-            // RGB
-            const rAmt = parseFloat(dom.inputs.inputs.rgbAmt.value);
-            const rVal = getVal(dom.inputs.inputs.rgbLink.value, state.inverts.rgb);
-            if(rAmt > 0) {
-                const s = rVal * rAmt * 30;
-                dom.stage.style.textShadow = `${s}px 0 red, -${s}px 0 blue`;
-                dom.canvas.style.transform = `translate(${s}px, 0)`; 
-            } else {
-                dom.stage.style.textShadow = 'none'; dom.canvas.style.transform = 'none';
-            }
-        }
-
-        // --- UTILS ---
-        window.toggleInv = (k) => { state.inverts[k]=!state.inverts[k]; document.getElementById(`inv-${k}`).classList.toggle('active'); };
-        window.updateWM = () => {
-            const t = dom.inputs.wm.input.value;
-            if(t) { dom.wm.text.innerText=t; dom.wm.text.style.display='block'; dom.wm.img.style.display='none'; }
-            dom.wm.cont.style.opacity = dom.inputs.wm.op.value;
-        };
-        document.getElementById('wm-file').addEventListener('change', e=>{
-            dom.wm.img.src=URL.createObjectURL(e.target.files[0]); dom.wm.img.style.display='block'; dom.wm.text.style.display='none';
-        });
-
-        // Tweak
-        window.openTweak = (i) => {
-            state.currentTweak = i; const b = state.bands[i];
-            dom.tweakInputs.atk.value=b.atk; dom.tweakInputs.dec.value=b.dec; dom.tweakInputs.gate.value=b.gate;
-            dom.tweakModal.classList.add('active');
-        };
-        window.closeTweak = () => dom.tweakModal.classList.remove('active');
-        ['atk','dec','gate'].forEach(k=>dom.tweakInputs[k].addEventListener('input',e=>state.bands[state.currentTweak][k]=parseFloat(e.target.value)));
-
-        // File/Drag
+        // --- General ---
         document.getElementById('file-logo').addEventListener('change', e=>{ document.getElementById('logo-container').style.backgroundImage=`url(${URL.createObjectURL(e.target.files[0])})`; });
         document.getElementById('file-bg').addEventListener('change', e=>{
             const f=e.target.files[0]; const u=URL.createObjectURL(f);
-            if(f.type.startsWith('video')) { dom.bgVid.src=u; dom.bgVid.style.display='block'; dom.bgVid.play(); dom.bgImg.style.display='none'; dom.bgDef.style.display='none'; }
-            else { dom.bgImg.src=u; dom.bgImg.style.display='block'; dom.bgVid.style.display='none'; dom.bgDef.style.display='none'; }
+            if(f.type.startsWith('video')) { dom.stage.querySelector('#bg-video').src=u; dom.stage.querySelector('#bg-video').style.display='block'; dom.stage.querySelector('#bg-video').play(); }
+            else { dom.stage.querySelector('#bg-img').src=u; dom.stage.querySelector('#bg-img').style.display='block'; }
+            dom.stage.querySelector('#bg-default').style.display='none';
         });
+        document.getElementById('wm-file').addEventListener('change', e=>{ dom.wm.img.src=URL.createObjectURL(e.target.files[0]); dom.wm.img.style.display='block'; dom.wm.text.style.display='none'; });
+
+        // Tweak UI
+        window.openTweak = (i) => { state.currentTweak = i; const b = state.bands[i]; dom.tweakInputs.atk.value=b.atk; dom.tweakInputs.dec.value=b.dec; dom.tweakInputs.gate.value=b.gate; dom.tweakModal.classList.add('active'); };
+        window.closeTweak = () => dom.tweakModal.classList.remove('active');
+        ['atk','dec','gate'].forEach(k=>dom.tweakInputs[k].addEventListener('input',e=>state.bands[state.currentTweak][k]=parseFloat(e.target.value)));
+        
         window.startDrag = (id, e) => {
-            const up = () => { document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); };
             const mv = (ev) => {
                 const r = document.getElementById(`g-${id}`).getBoundingClientRect();
-                let y = 1-((ev.clientY-r.top)/r.height);
-                state.bands[id].thresh = Math.max(0,Math.min(1,y));
+                state.bands[id].thresh = Math.max(0,Math.min(1, 1-((ev.clientY-r.top)/r.height)));
                 document.getElementById(`l-${id}`).style.bottom = (state.bands[id].thresh*100)+'%';
             };
-            document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); mv(e);
+            document.addEventListener('mousemove',mv); document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',mv),{once:true}); mv(e);
         };
         window.toggleUI = () => document.getElementById('ui-panel').classList.toggle('hidden');
     </script>
