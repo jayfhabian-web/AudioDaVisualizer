@@ -2,106 +2,115 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PhonkVisualizer Pro</title>
+    <title>PhonkVisualizer V4 - Custom Colors</title>
     <style>
-        /* --- POLISHED UI STYLING --- */
-        body { margin: 0; background: #050505; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; color: white; }
+        /* --- STYLING --- */
+        body { margin: 0; background: #050505; font-family: 'Segoe UI', sans-serif; overflow: hidden; color: white; }
         
-        #canvas-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
-        }
+        #canvas-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-        /* The Background Image Layer (Separate so we can zoom it smoothly) */
         #bg-layer {
-            position: absolute; top: -5%; left: -5%; width: 110%; height: 110%; z-index: 0;
+            position: absolute; top: -10%; left: -10%; width: 120%; height: 120%; z-index: 0;
             background-size: cover; background-position: center;
-            filter: blur(8px) brightness(0.4); /* Darkened and Blurred for polish */
-            transition: transform 0.1s linear; /* Smooth hardware acceleration */
+            filter: blur(12px) brightness(0.3);
+            transition: transform 0.05s linear;
         }
 
-        /* The Center Logo */
         #logo-container {
             position: absolute; top: 50%; left: 50%; 
             transform: translate(-50%, -50%); 
-            z-index: 2;
-            width: 300px; height: 300px;
+            z-index: 2; width: 300px; height: 300px;
             display: flex; justify-content: center; align-items: center;
         }
 
         #logo {
-            width: 100%; height: 100%; 
-            border-radius: 50%; 
+            width: 100%; height: 100%; border-radius: 50%; 
             background-size: cover; background-position: center;
-            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1); /* Subtle ring */
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
         }
 
-        /* Controls UI */
+        /* --- CONTROLS UI --- */
         #ui-controls {
-            position: absolute; bottom: 20px; left: 20px; z-index: 10;
-            background: rgba(15, 15, 15, 0.85); 
+            position: absolute; top: 20px; left: 20px; z-index: 10;
+            background: rgba(10, 10, 10, 0.9); 
             backdrop-filter: blur(10px);
-            padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
-            width: 280px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transition: opacity 0.3s;
+            padding: 20px; border-radius: 8px; border: 1px solid #333;
+            width: 260px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 10px 40px black;
         }
-        #ui-controls:hover { opacity: 1; }
         
-        h2 { margin: 0 0 15px 0; font-size: 16px; letter-spacing: 1px; color: #ff0055; text-transform: uppercase; }
+        h3 { margin: 0 0 15px 0; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
         
-        .control-group { margin-bottom: 12px; }
-        label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; uppercase; }
-        select, input[type="file"], input[type="range"] { width: 100%; background: #222; border: 1px solid #444; color: white; padding: 5px; border-radius: 4px; }
-        input[type="range"] { cursor: pointer; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-size: 11px; color: #aaa; margin-bottom: 5px; font-weight: bold; }
+        
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #ff0055; }
+        input[type="color"] { width: 100%; height: 35px; border: none; background: none; cursor: pointer; }
+        input[type="file"] { font-size: 11px; color: #888; }
 
-        button {
-            background: linear-gradient(45deg, #ff0055, #ff0033);
-            border: none; color: white; padding: 10px; width: 100%; border-radius: 6px;
-            font-weight: bold; cursor: pointer; margin-top: 10px;
-            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.3);
-        }
-        button:active { transform: scale(0.98); }
+        /* The "Mode" toggle */
+        .toggle-row { display: flex; gap: 10px; background: #222; padding: 2px; border-radius: 4px; }
+        .toggle-btn { flex: 1; background: none; border: none; color: #666; padding: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .toggle-btn.active { background: #444; color: white; border-radius: 3px; }
+
+        #hide-hint { position: absolute; bottom: 10px; left: 20px; color: #444; font-size: 10px; z-index: 10; }
     </style>
 </head>
 <body>
 
-    <div id="bg-layer" style="background-image: url('https://images.unsplash.com/photo-1614726365723-49faaa5f1b1b?q=80&w=1920&auto=format&fit=crop');"></div>
-
+    <div id="bg-layer"></div>
     <canvas id="canvas-layer"></canvas>
 
     <div id="logo-container">
-        <div id="logo" style="background-image: url('https://images.unsplash.com/photo-1614726365723-49faaa5f1b1b?q=80&w=500&auto=format&fit=crop');"></div>
+        <div id="logo" style="background-image: url('https://via.placeholder.com/300');"></div>
     </div>
 
     <div id="ui-controls">
-        <h2>Phonk Engine V3</h2>
-        
+        <h3>1. Audio & Files</h3>
         <div class="control-group">
-            <label>Upload Audio</label>
+            <label>Song File</label>
             <input type="file" id="audio-input" accept="audio/*">
         </div>
-        
         <div class="control-group">
-            <label>Reaction Mode</label>
-            <select id="mode-select">
-                <option value="bass">Bass Only (Kick/Sub)</option>
-                <option value="all">Full Audio (Vocals/Melody)</option>
-            </select>
+            <label>Center Image</label>
+            <input type="file" id="logo-input" accept="image/*">
+        </div>
+        <div class="control-group">
+            <label>Background Image</label>
+            <input type="file" id="bg-input" accept="image/*">
         </div>
 
+        <h3>2. Behavior</h3>
+        <div class="control-group">
+            <label>Reaction Mode</label>
+            <div class="toggle-row">
+                <button class="toggle-btn active" onclick="setMode('bass', this)">KICK ONLY</button>
+                <button class="toggle-btn" onclick="setMode('all', this)">FULL AUDIO</button>
+            </div>
+        </div>
+        <div class="control-group">
+            <label>Bass Threshold (The "Gate")</label>
+            <input type="range" id="threshold" min="0" max="200" value="160">
+        </div>
         <div class="control-group">
             <label>Shake Intensity</label>
             <input type="range" id="intensity" min="0" max="3" step="0.1" value="1.5">
         </div>
 
-        <div class="control-group">
-            <label>Customize Images</label>
-            <input type="file" id="logo-input" accept="image/*" style="margin-bottom:5px">
-            <input type="file" id="bg-input" accept="image/*">
+        <h3>3. Colors</h3>
+        <div class="control-group" style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label>Inner Color</label>
+                <input type="color" id="color-start" value="#ff0055">
+            </div>
+            <div style="flex: 1;">
+                <label>Outer Color</label>
+                <input type="color" id="color-end" value="#5500ff">
+            </div>
         </div>
-
-        <button id="toggle-ui">Hide Controls (Press H)</button>
     </div>
+
+    <div id="hide-hint">Press 'H' to hide controls</div>
 
     <script>
         // --- SETUP ---
@@ -113,16 +122,16 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Variables for Audio
         let audioCtx, audioSrc, analyser;
         let isPlaying = false;
+        let currentMode = 'bass';
         
-        // Variables for Smoothing (The "Polish")
+        // Smoothing Variables
         let currentScale = 1;
         let targetScale = 1;
-        const smoothingFactor = 0.15; // Lower = smoother, Higher = snappier
+        const smoothingFactor = 0.2; // How fast it snaps to the beat
 
-        // --- AUDIO INPUT HANDLER ---
+        // --- AUDIO INPUT ---
         document.getElementById('audio-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if(!file) return;
@@ -137,8 +146,9 @@
                     audioSrc.buffer = buffer;
 
                     analyser = audioCtx.createAnalyser();
-                    analyser.fftSize = 256; // 128 bars
-                    analyser.smoothingTimeConstant = 0.8; // Built-in WebAudio smoothing
+                    analyser.fftSize = 256; 
+                    // Lower smoothing makes it react faster to kicks
+                    analyser.smoothingTimeConstant = 0.6; 
 
                     audioSrc.connect(analyser);
                     analyser.connect(audioCtx.destination);
@@ -150,7 +160,7 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // --- IMAGE HANDLERS ---
+        // --- IMAGE HANDLING ---
         document.getElementById('logo-input').addEventListener('change', (e) => {
             const url = URL.createObjectURL(e.target.files[0]);
             document.getElementById('logo').style.backgroundImage = `url(${url})`;
@@ -158,10 +168,17 @@
         document.getElementById('bg-input').addEventListener('change', (e) => {
             const url = URL.createObjectURL(e.target.files[0]);
             bgLayer.style.backgroundImage = `url(${url})`;
-            document.getElementById('logo').style.backgroundImage = `url(${url})`; // Default center to match
+            document.getElementById('logo').style.backgroundImage = `url(${url})`; 
         });
 
-        // --- MAIN RENDER LOOP ---
+        // --- MODE TOGGLE ---
+        window.setMode = (mode, btn) => {
+            currentMode = mode;
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // --- RENDER LOOP ---
         function render() {
             if(!isPlaying) return;
             requestAnimationFrame(render);
@@ -172,105 +189,105 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. DETERMINE "ENERGY" BASED ON MODE
-            const mode = document.getElementById('mode-select').value;
+            // 1. CALCULATE ENERGY
             let energy = 0;
+            
+            // "KICK ONLY" MODE
+            if (currentMode === 'bass') {
+                // We only look at indices 1, 2, 3 (The deepest 20-60Hz bass)
+                // We SKIP index 0 because it often contains "rumble" or DC offset noise
+                let bassSum = dataArray[1] + dataArray[2] + dataArray[3];
+                let bassAvg = bassSum / 3;
 
-            if (mode === 'bass') {
-                // Focus on indices 0 to 4 (Deep Bass ~0-100Hz)
-                let bassSum = 0;
-                for(let i = 0; i < 5; i++) bassSum += dataArray[i];
-                energy = bassSum / 5; 
+                // --- THE NOISE GATE (The Fix) ---
+                const threshold = document.getElementById('threshold').value;
+                
+                // If the bass is quieter than the threshold, we pretend it is 0.
+                if (bassAvg < threshold) {
+                    energy = 0; 
+                } else {
+                    // If it passes the threshold, we use the value
+                    energy = bassAvg;
+                }
+
             } else {
-                // Focus on indices 0 to 100 (Full Spectrum)
-                let allSum = 0;
-                for(let i = 0; i < 100; i++) allSum += dataArray[i];
-                energy = allSum / 100;
+                // "FULL AUDIO" MODE (Standard Average)
+                let sum = 0;
+                for(let i=0; i<bufferLength; i++) sum += dataArray[i];
+                energy = sum / bufferLength;
             }
 
-            // 2. MATH: SMOOTHING (LERP)
-            // Instead of jumping to the new value, we move 15% of the way there every frame.
+            // 2. APPLY SMOOTHING (LERP)
             const sensitivity = document.getElementById('intensity').value;
-            targetScale = 1 + (energy / 255) * (sensitivity * 0.4);
+            
+            // Math: Map energy (0-255) to a scale (1.0 - 1.X)
+            // If energy is 0 (due to gate), target is 1.0 (no shake)
+            targetScale = 1 + (energy / 255) * (sensitivity * 0.5);
+            
+            // Lerp formula: Move current value 20% closer to target value
             currentScale = currentScale + (targetScale - currentScale) * smoothingFactor;
 
-            // 3. APPLY SHAKE TO DOM ELEMENTS
+            // 3. MOVE ELEMENTS
             logoContainer.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
-            
-            // Subtle rotation for extra polish
-            const rotation = (currentScale - 1) * 10; 
-            bgLayer.style.transform = `scale(${1 + (currentScale-1)*0.2}) rotate(${rotation}deg)`;
+            bgLayer.style.transform = `scale(${1 + (currentScale-1)*0.3})`;
 
 
-            // 4. DRAW THE POLISHED SPECTRUM
+            // 4. DRAW SPECTRUM
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            // The radius should match the div size (300px / 2 = 150px) plus the shake
             const radius = 150 * currentScale; 
+            
+            // Get user colors
+            const colorStart = document.getElementById('color-start').value;
+            const colorEnd = document.getElementById('color-end').value;
 
             ctx.beginPath();
             
-            // Draw a full circle of bars
             for (let i = 0; i < bufferLength; i++) {
-                // Get value and scale it
-                let barHeight = dataArray[i] * 0.6;
+                let barHeight = dataArray[i] * 0.7;
                 
-                // If in Bass mode, we boost the visual height of bass bars to make them pop
-                if (mode === 'bass' && i < 10) barHeight *= 1.5;
+                // In Bass Mode, we artificially boost the visual bars just for looks
+                // even if the shake is gated, we want the bars to move a little
+                if (currentMode === 'bass') {
+                     if (i < 5) barHeight *= 1.8; // Boost low bars
+                     else barHeight *= 0.5;       // Suppress high bars
+                }
 
                 const rads = (i * 2 * Math.PI) / bufferLength;
-
-                // Calculation for outer point
                 const x = centerX + Math.cos(rads) * (radius + barHeight);
                 const y = centerY + Math.sin(rads) * (radius + barHeight);
-                
-                // Calculation for inner point (circle edge)
-                const x_inner = centerX + Math.cos(rads) * (radius + 5); // +5 gap
-                const y_inner = centerY + Math.sin(rads) * (radius + 5);
+                const x_inner = centerX + Math.cos(rads) * (radius + 5); 
+                const y_inner = centerY + Math.sin(rads) * (radius + 5); 
 
-                // Draw Line
                 ctx.moveTo(x_inner, y_inner);
                 ctx.lineTo(x, y);
             }
 
-            // STYLING THE BARS
-            // Create a gradient for that "neon" look
-            const gradient = ctx.createLinearGradient(centerX, centerY - radius, centerX, centerY + radius + 100);
-            gradient.addColorStop(0, '#ff0055');
-            gradient.addColorStop(1, '#5500ff');
+            // Apply Gradient
+            const gradient = ctx.createLinearGradient(centerX, centerY - radius, centerX, centerY + radius);
+            gradient.addColorStop(0, colorStart);
+            gradient.addColorStop(1, colorEnd);
             
             ctx.strokeStyle = gradient;
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round'; // Rounds the ends of the bars
-            
-            // Add Glow
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ff0055';
-            
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = colorStart;
             ctx.stroke();
-            
-            // Reset glow for next frame (performance)
             ctx.shadowBlur = 0;
         }
 
-        // Hide UI Hotkey
-        document.addEventListener('keydown', (e) => {
-            if(e.key.toLowerCase() === 'h') {
-                const ui = document.getElementById('ui-controls');
-                ui.style.opacity = ui.style.opacity === '0' ? '1' : '0';
-            }
-        });
-        document.getElementById('toggle-ui').addEventListener('click', () => {
-             const ui = document.getElementById('ui-controls');
-             ui.style.opacity = '0';
-        });
-
-        // Resize handler
+        // --- UTILS ---
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         });
-
+        document.addEventListener('keydown', (e) => {
+            if(e.key.toLowerCase() === 'h') {
+                const ui = document.getElementById('ui-controls');
+                ui.style.display = ui.style.display === 'none' ? 'block' : 'none';
+            }
+        });
     </script>
 </body>
 </html>
