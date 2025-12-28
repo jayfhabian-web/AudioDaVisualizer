@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V23 - Bass Sculptor</title>
+    <title>Phonk V24 - The Sculptor</title>
     <style>
         /* --- THEME --- */
         :root {
-            --bg: #020202;
-            --panel: rgba(12, 12, 12, 0.96);
-            --border: rgba(255, 255, 255, 0.12);
-            --primary: #ff0033; 
+            --bg: #000;
+            --panel: rgba(10, 10, 10, 0.96);
+            --border: rgba(255, 255, 255, 0.15);
             --text: #ccc;
         }
+        * { box-sizing: border-box; user-select: none; }
 
         body { margin: 0; background: var(--bg); font-family: 'Segoe UI', monospace; overflow: hidden; color: var(--text); }
         
@@ -22,55 +22,71 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 320px; height: 320px; z-index: 5; border-radius: 50%; 
             background-size: cover; background-position: center;
-            box-shadow: 0 0 90px rgba(0,0,0,0.9);
-            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 0 100px rgba(0,0,0,1);
+            border: 2px solid rgba(255,255,255,0.05);
         }
 
         /* UI PANEL */
         #ui-panel {
-            position: absolute; top: 0; left: 0; width: 340px; height: 100vh;
+            position: absolute; top: 0; left: 0; width: 380px; height: 100vh;
             background: var(--panel); border-right: 1px solid var(--border);
-            padding: 20px; box-sizing: border-box; z-index: 20; overflow-y: auto;
+            padding: 15px; z-index: 20; overflow-y: auto;
             transition: transform 0.2s ease;
         }
         #ui-panel.hidden { transform: translateX(-100%); }
 
-        h2 { font-size: 16px; color: #fff; margin: 0 0 20px 0; border-left: 3px solid var(--primary); padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
-        h3 { font-size: 10px; color: #666; margin-top: 25px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
+        h2 { font-size: 14px; color: #fff; margin: 0 0 15px 0; border-left: 3px solid #fff; padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
+        h3 { font-size: 10px; color: #666; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
 
-        .control-group { margin-bottom: 15px; }
-        label { display: flex; justify-content: space-between; font-size: 10px; color: #999; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; }
+        .control-group { margin-bottom: 12px; }
+        label { display: flex; justify-content: space-between; font-size: 9px; color: #888; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
 
         input[type="range"] { width: 100%; height: 4px; background: #222; border-radius: 2px; appearance: none; cursor: pointer; }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.5); border: 1px solid #000; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background: #fff; border-radius: 50%; }
+        input[type="file"] { width: 100%; background: #111; border: 1px solid #222; color: #666; padding: 6px; border-radius: 4px; font-size: 9px; }
         
-        /* THE SCULPTOR UI */
-        .sculptor-container {
-            display: flex; gap: 4px; height: 120px; background: #000; 
-            border: 1px solid #333; padding: 5px; align-items: flex-end;
-            position: relative; margin-bottom: 10px;
+        /* --- THE SCULPTOR GRID --- */
+        .sculptor-grid {
+            display: flex; gap: 5px; height: 180px; background: #050505; 
+            border: 1px solid #333; padding: 5px; margin-bottom: 10px;
         }
-        .sculpt-col { flex: 1; height: 100%; position: relative; background: #111; display:flex; align-items:flex-end; }
-        .audio-bar { width: 100%; background: #333; transition: height 0.05s; opacity: 0.6; }
-        .audio-bar.active { background: var(--primary); opacity: 1; box-shadow: 0 0 10px var(--primary); }
+        .sculpt-col { 
+            flex: 1; display: flex; flex-direction: column; 
+            border: 1px solid #222; background: #111; position: relative;
+        }
         
-        /* The "White Line" segments */
-        .thresh-marker { 
-            position: absolute; width: 100%; height: 3px; background: #fff; 
-            z-index: 10; bottom: 50%; transition: bottom 0.1s; 
-            box-shadow: 0 1px 3px black; cursor: ns-resize;
+        /* The Graph Area inside the column */
+        .graph-area {
+            flex: 1; position: relative; width: 100%; overflow: hidden; cursor: row-resize;
+            background: rgba(0,0,0,0.5);
         }
-        .freq-label {
-            position: absolute; bottom: -15px; width: 100%; text-align: center;
-            font-size: 8px; color: #555;
+        .audio-bar { 
+            position: absolute; bottom: 0; left: 0; width: 100%; 
+            height: 0%; background: #444; opacity: 0.6; transition: height 0.05s, background-color 0.1s; 
+        }
+        .audio-bar.active { opacity: 1; box-shadow: 0 0 15px currentColor; }
+        
+        /* The Draggable Line */
+        .thresh-line {
+            position: absolute; left: 0; width: 100%; height: 2px; 
+            background: #fff; z-index: 10; box-shadow: 0 1px 2px black;
+            pointer-events: none; /* Let clicks pass through to container for easier dragging */
         }
 
-        /* Standard Controls */
-        input[type="file"] { width: 100%; background: #111; border: 1px solid #222; color: #666; padding: 8px; border-radius: 4px; font-size: 10px; }
-        input[type="color"] { width: 100%; height: 25px; border: none; background: none; cursor: pointer; padding: 0; }
-        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; background: #0f0f0f; padding: 8px; border-radius: 4px; }
+        /* Controls under each bar */
+        .col-controls {
+            height: 60px; padding: 4px; display: flex; flex-direction: column; gap: 4px;
+            border-top: 1px solid #222; background: #080808;
+        }
+        input[type="color"] { width: 100%; height: 15px; border: none; padding: 0; background: none; cursor: pointer; }
+        .punch-slider { width: 100%; }
 
-        #toggle-ui { position: absolute; top: 15px; left: 360px; z-index: 25; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
+        .freq-label { font-size: 8px; text-align: center; color: #555; margin-top: 2px; font-weight: bold;}
+
+        /* Visual Settings */
+        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; background: #0f0f0f; padding: 8px; border-radius: 4px; border: 1px solid #222; }
+        
+        #toggle-ui { position: absolute; top: 15px; left: 400px; z-index: 25; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
         #ui-panel.hidden + #toggle-ui { left: 15px; }
     </style>
 </head>
@@ -79,10 +95,10 @@
     <div id="flash-layer"></div>
     <canvas id="canvas-layer"></canvas>
     <div id="logo-container"></div>
-    <button id="toggle-ui" onclick="toggleUI()">CONTROLS</button>
+    <button id="toggle-ui" onclick="toggleUI()">OPEN SCULPTOR</button>
 
     <div id="ui-panel" id="panel">
-        <h2>Phonk V23 <span style="font-size:10px;opacity:0.5">SCULPTOR</span></h2>
+        <h2>Phonk V24 <span style="font-size:9px; opacity:0.5">SCULPTOR</span></h2>
 
         <div class="control-group">
             <label>Track</label>
@@ -94,84 +110,83 @@
             <input type="file" id="img-in" accept="image/*">
         </div>
 
-        <h3>1. Threshold Sculptor</h3>
-        <p style="font-size:9px; color:#666; margin-bottom:8px;">
-            Adjust the sliders to "Bend the Line".<br>
-            If a bar hits the white line, the screen shakes.
+        <h3>1. Frequency Sculptor</h3>
+        <p style="font-size:9px; color:#555; margin-bottom:10px;">
+            • Drag the <b>White Lines</b> to set trigger threshold.<br>
+            • Use <b>Punch Slider</b> to boost specific bass.<br>
+            • Pick <b>Colors</b> for each frequency range.
         </p>
 
-        <div class="sculptor-container" id="sculptor">
-            <div class="sculpt-col">
-                <div class="audio-bar" id="bar-0"></div>
-                <div class="thresh-marker" id="mark-0"></div>
-                <span class="freq-label">20Hz</span>
-            </div>
-            <div class="sculpt-col">
-                <div class="audio-bar" id="bar-1"></div>
-                <div class="thresh-marker" id="mark-1"></div>
-                <span class="freq-label">40Hz</span>
-            </div>
-            <div class="sculpt-col">
-                <div class="audio-bar" id="bar-2"></div>
-                <div class="thresh-marker" id="mark-2"></div>
-                <span class="freq-label">60Hz</span>
-            </div>
-            <div class="sculpt-col">
-                <div class="audio-bar" id="bar-3"></div>
-                <div class="thresh-marker" id="mark-3"></div>
-                <span class="freq-label">80Hz</span>
-            </div>
-        </div>
-
-        <div class="control-group">
-            <label>20Hz Threshold (Deep Rumble)</label>
-            <input type="range" id="t0" min="0" max="255" value="200" oninput="updMarkers()">
-        </div>
-        <div class="control-group">
-            <label>40Hz Threshold (Main Kick)</label>
-            <input type="range" id="t1" min="0" max="255" value="140" oninput="updMarkers()">
-        </div>
-        <div class="control-group">
-            <label>60Hz Threshold (Punch)</label>
-            <input type="range" id="t2" min="0" max="255" value="160" oninput="updMarkers()">
-        </div>
-        <div class="control-group">
-            <label>80Hz Threshold (High Kick/Guitar)</label>
-            <input type="range" id="t3" min="0" max="255" value="220" oninput="updMarkers()">
-        </div>
-
-        <div class="control-group" style="margin-top:20px;">
-            <label>Reaction Power (Multiplier)</label>
-            <input type="range" id="sens" min="1.0" max="5.0" step="0.1" value="2.5">
-        </div>
-
-        <h3>2. Visuals</h3>
         <div class="checkbox-row">
-            <input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()">
-            <span style="font-size:10px;">Auto Colors</span>
+            <input type="checkbox" id="freq-mode" checked>
+            <span style="font-size:10px; color:white;"><b>FREQUENCY COLOR MODE</b> (Circle changes color)</span>
         </div>
-        <div id="manual-colors" style="display:none; margin-bottom:10px;">
-            <div style="display:flex; gap:5px;">
-                <div style="flex:1"><label>Bass</label><input type="color" id="col-bass" value="#ff0033"></div>
-                <div style="flex:1"><label>Mids</label><input type="color" id="col-audio" value="#ffffff"></div>
+
+        <div class="sculptor-grid">
+            <div class="sculpt-col">
+                <div class="graph-area" id="graph-0" onmousedown="startDrag(0, event)">
+                    <div class="audio-bar" id="bar-0"></div>
+                    <div class="thresh-line" id="line-0" style="bottom: 80%;"></div>
+                </div>
+                <div class="col-controls">
+                    <div class="freq-label">20Hz</div>
+                    <input type="color" id="col-0" value="#444444" title="Color">
+                    <input type="range" class="punch-slider" id="punch-0" min="0" max="3" step="0.1" value="1.0" title="Punch Volume">
+                </div>
+            </div>
+
+            <div class="sculpt-col">
+                <div class="graph-area" id="graph-1" onmousedown="startDrag(1, event)">
+                    <div class="audio-bar" id="bar-1"></div>
+                    <div class="thresh-line" id="line-1" style="bottom: 60%;"></div>
+                </div>
+                <div class="col-controls">
+                    <div class="freq-label">40Hz</div>
+                    <input type="color" id="col-1" value="#ff0000" title="Color">
+                    <input type="range" class="punch-slider" id="punch-1" min="0" max="3" step="0.1" value="1.5" title="Punch Volume">
+                </div>
+            </div>
+
+            <div class="sculpt-col">
+                <div class="graph-area" id="graph-2" onmousedown="startDrag(2, event)">
+                    <div class="audio-bar" id="bar-2"></div>
+                    <div class="thresh-line" id="line-2" style="bottom: 65%;"></div>
+                </div>
+                <div class="col-controls">
+                    <div class="freq-label">60Hz</div>
+                    <input type="color" id="col-2" value="#ff8800" title="Color">
+                    <input type="range" class="punch-slider" id="punch-2" min="0" max="3" step="0.1" value="1.2" title="Punch Volume">
+                </div>
+            </div>
+
+            <div class="sculpt-col">
+                <div class="graph-area" id="graph-3" onmousedown="startDrag(3, event)">
+                    <div class="audio-bar" id="bar-3"></div>
+                    <div class="thresh-line" id="line-3" style="bottom: 85%;"></div>
+                </div>
+                <div class="col-controls">
+                    <div class="freq-label">80Hz</div>
+                    <input type="color" id="col-3" value="#ffffff" title="Color">
+                    <input type="range" class="punch-slider" id="punch-3" min="0" max="3" step="0.1" value="0.8" title="Punch Volume">
+                </div>
             </div>
         </div>
 
+        <h3>2. Global Visuals</h3>
         <div class="control-group">
-            <label>Bar Width</label>
-            <input type="range" id="bar-width" min="2" max="60" value="30">
-        </div>
-        <div class="control-group">
-            <label>Bar Length</label>
-            <input type="range" id="bar-len" min="50" max="300" value="160">
+            <label>Master Bar Length</label>
+            <input type="range" id="bar-len" min="50" max="400" value="160">
         </div>
         <div class="control-group">
             <label>Circle Radius</label>
             <input type="range" id="radius" min="100" max="350" value="170">
         </div>
+        <div class="control-group">
+            <label>Bar Width</label>
+            <input type="range" id="bar-width" min="2" max="50" value="25">
+        </div>
 
-        <h3>3. Effects</h3>
-        <div class="checkbox-row" style="flex-wrap:wrap;">
+        <div class="checkbox-row" style="flex-wrap:wrap; margin-top:10px;">
             <label style="margin-right:10px;"><input type="checkbox" id="fx-zoom" checked> Zoom</label>
             <label style="margin-right:10px;"><input type="checkbox" id="fx-shake" checked> Shake</label>
             <label><input type="checkbox" id="fx-flash" checked> Flash</label>
@@ -179,6 +194,7 @@
     </div>
 
     <script>
+        // --- DOM REFERENCES ---
         const dom = {
             audio: document.getElementById('audio'),
             canvas: document.getElementById('canvas-layer'),
@@ -186,94 +202,128 @@
             logo: document.getElementById('logo-container'),
             flash: document.getElementById('flash-layer'),
             panel: document.getElementById('ui-panel'),
-            // The 4 bars
-            bars: [document.getElementById('bar-0'), document.getElementById('bar-1'), document.getElementById('bar-2'), document.getElementById('bar-3')],
-            markers: [document.getElementById('mark-0'), document.getElementById('mark-1'), document.getElementById('mark-2'), document.getElementById('mark-3')],
-            inputs: [document.getElementById('t0'), document.getElementById('t1'), document.getElementById('t2'), document.getElementById('t3')],
-            colBass: document.getElementById('col-bass'),
-            colAudio: document.getElementById('col-audio'),
-            autoColor: document.getElementById('auto-color')
+            // Arrays for the 4 bands
+            bars: [0,1,2,3].map(i => document.getElementById(`bar-${i}`)),
+            lines: [0,1,2,3].map(i => document.getElementById(`line-${i}`)),
+            colors: [0,1,2,3].map(i => document.getElementById(`col-${i}`)),
+            punches: [0,1,2,3].map(i => document.getElementById(`punch-${i}`)),
+            freqMode: document.getElementById('freq-mode')
         };
+        
         dom.canvas.width = window.innerWidth;
         dom.canvas.height = window.innerHeight;
 
+        // --- STATE ---
         const state = {
             connected: false,
             physics: 0,
-            extracted: { bass: '#ff0033', audio: '#ffffff' }
+            thresholds: [0.8, 0.6, 0.65, 0.85], // 0.0 to 1.0 (normalized)
+            activeColor: '#ffffff' // The color currently winning
         };
 
-        let audioCtx, source, analyser;
+        // --- DRAG LOGIC ---
+        let dragTarget = -1;
+        
+        function startDrag(index, e) {
+            dragTarget = index;
+            updateDrag(e);
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', endDrag);
+        }
+        function onDrag(e) { if(dragTarget !== -1) updateDrag(e); }
+        function endDrag() { 
+            dragTarget = -1; 
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', endDrag);
+        }
+        function updateDrag(e) {
+            const rect = document.getElementById(`graph-${dragTarget}`).getBoundingClientRect();
+            // Calculate percentage from bottom (inverted Y)
+            let y = 1.0 - ((e.clientY - rect.top) / rect.height);
+            // Clamp
+            if (y < 0) y = 0; if (y > 1) y = 1;
+            
+            state.thresholds[dragTarget] = y;
+            dom.lines[dragTarget].style.bottom = (y * 100) + "%";
+        }
 
+        // --- AUDIO SETUP ---
+        let audioCtx, source, analyser;
         dom.audio.addEventListener('play', () => {
             if(state.connected) { if(audioCtx.state === 'suspended') audioCtx.resume(); return; }
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             source = audioCtx.createMediaElementSource(dom.audio);
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 2048; // High precision
+            analyser.fftSize = 2048; 
             source.connect(analyser);
             source.connect(audioCtx.destination); 
             state.connected = true;
             loop();
         });
 
-        // Update the visual positions of the white lines based on sliders
-        window.updMarkers = () => {
-            dom.inputs.forEach((input, i) => {
-                let val = parseInt(input.value);
-                dom.markers[i].style.bottom = (val / 255 * 100) + "%";
-            });
-        };
-        // Run once on init
-        window.updMarkers();
-
+        // --- MAIN LOOP ---
         function loop() {
             requestAnimationFrame(loop);
             const buffer = analyser.frequencyBinCount; 
             const data = new Uint8Array(buffer);
             analyser.getByteFrequencyData(data);
 
-            // --- 1. THE SCULPTOR LOGIC ---
-            // We look at Bins 1, 2, 3, and 4.
-            // These correspond roughly to 20Hz, 40Hz, 60Hz, 80Hz
-            const bins = [data[1], data[2], data[3], data[4]];
-            let totalExcessForce = 0;
+            // Bins 1-4 correspond to our 4 sculptor bands
+            const bands = [data[1], data[2], data[3], data[4]];
+            
+            let totalForce = 0;
+            let maxForceInLoop = 0;
+            let winningIndex = -1;
 
-            bins.forEach((val, i) => {
-                // Update the visual bar height
-                dom.bars[i].style.height = (val / 255 * 100) + "%";
-                
-                // Get the threshold for THIS specific bar
-                const thresh = parseInt(dom.inputs[i].value);
+            bands.forEach((val, i) => {
+                // 1. Get Settings
+                const normVal = val / 255;
+                const punch = parseFloat(dom.punches[i].value);
+                const thresh = state.thresholds[i];
+                const color = dom.colors[i].value;
 
-                // Logic: Is this bar higher than its white line?
-                if (val > thresh) {
+                // 2. Update UI Bar Height
+                // Visually show the "boosted" value so user sees what Punch does
+                let visualHeight = normVal * punch; 
+                if(visualHeight > 1) visualHeight = 1;
+                dom.bars[i].style.height = (visualHeight * 100) + "%";
+                dom.bars[i].style.backgroundColor = color;
+
+                // 3. Logic: Did it cross the line?
+                if (normVal * punch > thresh) {
+                    // Calculate excess force
+                    let excess = (normVal * punch) - thresh;
+                    totalForce += excess;
+
                     dom.bars[i].classList.add('active');
-                    // Add the "overflow" to the total force
-                    // We divide by (255-thresh) to normalize it
-                    totalExcessForce += (val - thresh) / (255 - thresh);
+                    
+                    // Determine dominant color
+                    if (excess > maxForceInLoop) {
+                        maxForceInLoop = excess;
+                        winningIndex = i;
+                    }
                 } else {
                     dom.bars[i].classList.remove('active');
                 }
             });
 
-            // Normalize force (average of the triggered bars)
-            const sens = parseFloat(document.getElementById('sens').value);
-            let force = totalExcessForce * 0.5 * sens; // 0.5 dampener because we sum 4 bars
+            // 4. Update Global State
+            if (winningIndex !== -1) {
+                state.activeColor = dom.colors[winningIndex].value;
+            }
 
             // Physics Smoothing
-            if(force > state.physics) state.physics = force;
-            else state.physics *= 0.85; // Snappy decay
+            if (totalForce > state.physics) state.physics = totalForce;
+            else state.physics *= 0.85; // Decay
             
-            // Clamp
-            if(state.physics > 2.0) state.physics = 2.0;
-            if(state.physics < 0.001) state.physics = 0;
+            // Safety Clamp
+            if(state.physics > 2.5) state.physics = 2.5;
 
             draw(data, buffer, state.physics);
             applyFx(state.physics);
         }
 
-        // --- 2. SYMMETRICAL VISUALS ---
+        // --- DRAWING ---
         function draw(data, count, phys) {
             const ctx = dom.ctx;
             const cx = dom.canvas.width / 2;
@@ -281,13 +331,23 @@
             const baseRad = parseInt(document.getElementById('radius').value);
             const maxLen = parseInt(document.getElementById('bar-len').value);
             
-            const rad = baseRad + (phys * 15);
+            const rad = baseRad + (phys * 20); // Bounce
             const w = parseFloat(document.getElementById('bar-width').value);
             
-            const cBass = hexToRgb(dom.colBass.value);
-            const cAudio = hexToRgb(dom.colAudio.value);
-
             ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
+
+            // Determine Main Color
+            let mainColor = '#ffffff';
+            if (dom.freqMode.checked && phys > 0.1) {
+                // If Frequency Mode is ON, use the color of the band that triggered the bass
+                mainColor = state.activeColor;
+            } else if (!dom.freqMode.checked) {
+                // Default to first band color or white
+                mainColor = dom.colors[1].value; 
+            }
+
+            const cMain = hexToRgb(mainColor);
+            const cWhite = {r:255, g:255, b:255};
 
             const totalBars = 64;
             const angleStep = Math.PI / totalBars; 
@@ -297,15 +357,15 @@
                 let val = data[index];
                 
                 let h = (val / 255) * maxLen;
-                if(h < 4) h = 4;
+                if(h < 5) h = 5;
 
-                // Color Blend
-                let mix = i / 30; 
-                if(mix > 1) mix = 1;
-
-                const r = cBass.r + (cAudio.r - cBass.r) * mix;
-                const g = cBass.g + (cAudio.g - cBass.g) * mix;
-                const b = cBass.b + (cAudio.b - cBass.b) * mix;
+                // Gradient Logic
+                let mix = i / 30; if(mix>1) mix=1;
+                
+                // If FreqMode is on, the whole circle takes the winning color, fading to white at tips
+                const r = cMain.r + (cWhite.r - cMain.r) * mix;
+                const g = cMain.g + (cWhite.g - cMain.g) * mix;
+                const b = cMain.b + (cWhite.b - cMain.b) * mix;
                 ctx.fillStyle = `rgb(${r},${g},${b})`;
 
                 // Symmetrical Draw
@@ -344,25 +404,9 @@
             return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
         }
         window.toggleUI = () => dom.panel.classList.toggle('hidden');
-        window.toggleAutoColor = () => {
-            const a = dom.autoColor.checked;
-            document.getElementById('manual-colors').style.display = a ? 'none' : 'block';
-            if(a) { dom.colBass.value = state.extracted.bass; dom.colAudio.value = state.extracted.audio; }
-        }
-
         document.getElementById('img-in').addEventListener('change', e => {
             const u = URL.createObjectURL(e.target.files[0]);
             dom.logo.style.backgroundImage = `url(${u})`;
-            const i = new Image(); i.src = u;
-            i.onload = () => {
-                const c = document.createElement('canvas'); const x = c.getContext('2d');
-                c.width=i.width; c.height=i.height; x.drawImage(i,0,0);
-                const p1 = x.getImageData(i.width/2, i.height/2, 1, 1).data;
-                const p2 = x.getImageData(10, 10, 1, 1).data;
-                state.extracted.bass = "#" + ((1<<24)+(p1[0]<<16)+(p1[1]<<8)+p1[2]).toString(16).slice(1);
-                state.extracted.audio = "#" + ((1<<24)+(p2[0]<<16)+(p2[1]<<8)+p2[2]).toString(16).slice(1);
-                if(dom.autoColor.checked) { dom.colBass.value = state.extracted.bass; dom.colAudio.value = state.extracted.audio; }
-            }
         });
         document.getElementById('file-in').addEventListener('change', e => { dom.audio.src = URL.createObjectURL(e.target.files[0]); dom.audio.play(); });
         window.onresize = () => { dom.canvas.width=window.innerWidth; dom.canvas.height=window.innerHeight; }
