@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V25 - Shape Shifter</title>
+    <title>Phonk V26 - Priority Mode</title>
     <style>
         /* --- THEME --- */
         :root {
             --bg: #000;
-            --panel: rgba(12, 12, 12, 0.96);
+            --panel: rgba(10, 10, 10, 0.96);
             --border: rgba(255, 255, 255, 0.15);
             --text: #ccc;
             --accent: #ff0033;
@@ -50,7 +50,7 @@
 
         /* --- THE SCULPTOR GRID --- */
         .sculptor-grid {
-            display: flex; gap: 5px; height: 140px; background: #050505; 
+            display: flex; gap: 5px; height: 160px; background: #050505; 
             border: 1px solid #333; padding: 5px; margin-bottom: 10px;
         }
         .sculpt-col { 
@@ -58,30 +58,41 @@
             border: 1px solid #222; background: #111; position: relative;
         }
         
-        /* The Graph Area inside the column */
         .graph-area {
             flex: 1; position: relative; width: 100%; overflow: hidden; cursor: row-resize;
             background: rgba(0,0,0,0.5);
         }
         .audio-bar { 
             position: absolute; bottom: 0; left: 0; width: 100%; 
-            height: 0%; background: #444; opacity: 0.6; transition: height 0.05s, background-color 0.1s; 
+            height: 0%; background: #444; opacity: 0.6; transition: height 0.05s;
         }
         .audio-bar.active { opacity: 1; box-shadow: 0 0 15px currentColor; }
         
         .thresh-line {
             position: absolute; left: 0; width: 100%; height: 2px; 
-            background: #fff; z-index: 10; box-shadow: 0 1px 2px black;
-            pointer-events: none;
+            background: #fff; z-index: 10; box-shadow: 0 1px 2px black; pointer-events: none;
         }
 
         .col-controls {
-            height: 35px; padding: 4px; display: flex; flex-direction: column; gap: 2px;
-            border-top: 1px solid #222; background: #080808; justify-content: center;
+            height: 50px; padding: 4px; display: flex; flex-direction: column; gap: 4px;
+            border-top: 1px solid #222; background: #080808; align-items: center;
         }
         .freq-label { font-size: 8px; text-align: center; color: #555; font-weight: bold;}
         
-        /* Colors Row */
+        /* THE PRIORITY BUTTON */
+        .prio-btn {
+            width: 100%; border: 1px solid #333; background: #111; color: #555;
+            font-size: 9px; padding: 2px; cursor: pointer; text-transform: uppercase;
+            border-radius: 2px; font-weight: bold; transition: all 0.2s;
+        }
+        .prio-btn:hover { background: #222; color: #fff; }
+        /* Active State */
+        .prio-btn.active {
+            background: var(--accent); border-color: var(--accent); 
+            color: #fff; box-shadow: 0 0 8px var(--accent);
+        }
+
+        /* Visual Settings */
         .color-row { display: flex; gap: 5px; margin-bottom: 10px; }
         .color-box { flex: 1; background: #111; padding: 5px; border: 1px solid #222; border-radius: 4px; }
         input[type="color"] { width: 100%; height: 20px; border: none; padding: 0; background: none; cursor: pointer; }
@@ -100,7 +111,7 @@
     <button id="toggle-ui" onclick="toggleUI()">OPEN SCULPTOR</button>
 
     <div id="ui-panel" id="panel">
-        <h2>Phonk V25 <span style="font-size:9px; opacity:0.5">SHAPESHIFTER</span></h2>
+        <h2>Phonk V26 <span style="font-size:9px; opacity:0.5">PRIORITY</span></h2>
 
         <div class="control-group">
             <label>Track</label>
@@ -111,85 +122,76 @@
             <label>Image</label>
             <input type="file" id="img-in" accept="image/*">
         </div>
-
+        
         <div class="control-group" style="background:#111; padding:10px; border:1px solid #333; border-radius:4px;">
-            <label style="color:#fff;">Global Pre-Amp (Signal Boost)</label>
+            <label style="color:#fff;">Global Pre-Amp</label>
             <input type="range" id="pre-amp" min="1.0" max="3.0" step="0.1" value="1.0">
-            <div style="font-size:8px; color:#666; margin-top:3px;">Turn this UP if the bars aren't hitting the white lines.</div>
         </div>
 
         <h3>2. Frequency Sculptor</h3>
-        <p style="font-size:9px; color:#555; margin-bottom:10px;">Drag white lines to set trigger points.</p>
+        <p style="font-size:9px; color:#555; margin-bottom:10px;">
+            Click <b>PRIORITIZE</b> to make that bar the main trigger.<br>
+            Only one can be active at a time.
+        </p>
 
         <div class="sculptor-grid">
             <div class="sculpt-col">
                 <div class="graph-area" id="graph-0" onmousedown="startDrag(0, event)">
                     <div class="audio-bar" id="bar-0"></div><div class="thresh-line" id="line-0" style="bottom: 80%;"></div>
                 </div>
-                <div class="col-controls"><div class="freq-label">20Hz</div></div>
+                <div class="col-controls">
+                    <div class="freq-label">20Hz</div>
+                    <button class="prio-btn" id="btn-0" onclick="setPriority(0)">Prioritize</button>
+                </div>
             </div>
             <div class="sculpt-col">
                 <div class="graph-area" id="graph-1" onmousedown="startDrag(1, event)">
                     <div class="audio-bar" id="bar-1"></div><div class="thresh-line" id="line-1" style="bottom: 60%;"></div>
                 </div>
-                <div class="col-controls"><div class="freq-label">40Hz</div></div>
+                <div class="col-controls">
+                    <div class="freq-label">40Hz</div>
+                    <button class="prio-btn" id="btn-1" onclick="setPriority(1)">Prioritize</button>
+                </div>
             </div>
             <div class="sculpt-col">
                 <div class="graph-area" id="graph-2" onmousedown="startDrag(2, event)">
                     <div class="audio-bar" id="bar-2"></div><div class="thresh-line" id="line-2" style="bottom: 65%;"></div>
                 </div>
-                <div class="col-controls"><div class="freq-label">60Hz</div></div>
+                <div class="col-controls">
+                    <div class="freq-label">60Hz</div>
+                    <button class="prio-btn" id="btn-2" onclick="setPriority(2)">Prioritize</button>
+                </div>
             </div>
             <div class="sculpt-col">
                 <div class="graph-area" id="graph-3" onmousedown="startDrag(3, event)">
                     <div class="audio-bar" id="bar-3"></div><div class="thresh-line" id="line-3" style="bottom: 85%;"></div>
                 </div>
-                <div class="col-controls"><div class="freq-label">80Hz</div></div>
+                <div class="col-controls">
+                    <div class="freq-label">80Hz</div>
+                    <button class="prio-btn" id="btn-3" onclick="setPriority(3)">Prioritize</button>
+                </div>
             </div>
         </div>
 
         <h3>3. Visuals</h3>
-        
         <div class="control-group">
             <label>Bar Shape</label>
             <select id="shape-select">
-                <option value="square">Square (Classic)</option>
-                <option value="triangle">Triangle (Sharp)</option>
-                <option value="round">Round (Sine/Smooth)</option>
+                <option value="square">Square</option>
+                <option value="triangle">Triangle</option>
+                <option value="round">Round</option>
             </select>
         </div>
-
         <div class="color-row">
-            <div class="color-box">
-                <label>Idle Color</label>
-                <input type="color" id="col-idle" value="#ffffff">
-            </div>
-            <div class="color-box">
-                <label>Bass Trigger</label>
-                <input type="color" id="col-bass" value="#ff0033">
-            </div>
+            <div class="color-box"><label>Idle</label><input type="color" id="col-idle" value="#ffffff"></div>
+            <div class="color-box"><label>Flash</label><input type="color" id="col-bass" value="#ff0033"></div>
         </div>
-        <div class="checkbox-row">
-            <input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()">
-            <span style="font-size:10px;">Auto-Match Colors from Image</span>
-        </div>
-        <div class="checkbox-row">
-            <input type="checkbox" id="freq-flash" checked>
-            <span style="font-size:10px;">Color Flash on Beat</span>
-        </div>
+        <div class="checkbox-row"><input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()"><span style="font-size:10px;">Auto-Match Colors</span></div>
+        <div class="checkbox-row"><input type="checkbox" id="freq-flash" checked><span style="font-size:10px;">Color Flash on Beat</span></div>
 
-        <div class="control-group">
-            <label>Circle Radius</label>
-            <input type="range" id="radius" min="100" max="350" value="170">
-        </div>
-        <div class="control-group">
-            <label>Bar Length</label>
-            <input type="range" id="bar-len" min="50" max="400" value="160">
-        </div>
-        <div class="control-group">
-            <label>Bar Width</label>
-            <input type="range" id="bar-width" min="2" max="50" value="25">
-        </div>
+        <div class="control-group"><label>Circle Radius</label><input type="range" id="radius" min="100" max="350" value="170"></div>
+        <div class="control-group"><label>Bar Length</label><input type="range" id="bar-len" min="50" max="400" value="160"></div>
+        <div class="control-group"><label>Bar Width</label><input type="range" id="bar-width" min="2" max="50" value="25"></div>
 
         <h3>4. Effects</h3>
         <div class="checkbox-row" style="flex-wrap:wrap;">
@@ -209,6 +211,7 @@
             panel: document.getElementById('ui-panel'),
             bars: [0,1,2,3].map(i => document.getElementById(`bar-${i}`)),
             lines: [0,1,2,3].map(i => document.getElementById(`line-${i}`)),
+            btns: [0,1,2,3].map(i => document.getElementById(`btn-${i}`)),
             colIdle: document.getElementById('col-idle'),
             colBass: document.getElementById('col-bass'),
             autoColor: document.getElementById('auto-color'),
@@ -216,7 +219,6 @@
             shapeSelect: document.getElementById('shape-select'),
             freqFlash: document.getElementById('freq-flash')
         };
-        
         dom.canvas.width = window.innerWidth;
         dom.canvas.height = window.innerHeight;
 
@@ -224,8 +226,32 @@
             connected: false,
             physics: 0,
             thresholds: [0.8, 0.6, 0.65, 0.85],
-            extracted: { bass: '#ff0033', idle: '#ffffff' }
+            extracted: { bass: '#ff0033', idle: '#ffffff' },
+            priorityBand: -1 // -1 means no priority
         };
+
+        // --- PRIORITY LOGIC ---
+        window.setPriority = (idx) => {
+            // If clicking the already active one, turn it off
+            if (state.priorityBand === idx) {
+                state.priorityBand = -1;
+            } else {
+                state.priorityBand = idx;
+            }
+            updateButtons();
+        };
+
+        function updateButtons() {
+            dom.btns.forEach((btn, i) => {
+                if (i === state.priorityBand) {
+                    btn.classList.add('active');
+                    btn.innerText = "ACTIVE";
+                } else {
+                    btn.classList.remove('active');
+                    btn.innerText = "PRIORITIZE";
+                }
+            });
+        }
 
         // --- DRAG LOGIC ---
         let dragTarget = -1;
@@ -269,20 +295,31 @@
             const data = new Uint8Array(buffer);
             analyser.getByteFrequencyData(data);
 
-            const gain = parseFloat(dom.preAmp.value); // Apply Pre-Amp
-
-            // --- SCULPTOR LOGIC ---
+            const gain = parseFloat(dom.preAmp.value); 
             const bands = [data[1], data[2], data[3], data[4]];
             let totalForce = 0;
             let triggered = false;
 
             bands.forEach((val, i) => {
                 let amplifiedVal = (val * gain) / 255;
+                
+                // === PRIORITY BOOST ===
+                // If this is the priority band, boost it by 50%
+                if (state.priorityBand === i) {
+                    amplifiedVal *= 1.5; 
+                }
+
                 if(amplifiedVal > 1) amplifiedVal = 1;
 
                 // UI Update
                 dom.bars[i].style.height = (amplifiedVal * 100) + "%";
-                dom.bars[i].style.backgroundColor = triggered ? dom.colBass.value : '#555';
+                
+                // Color logic: Priority band gets a special highlight in UI
+                let barColor = '#555';
+                if (state.priorityBand === i) barColor = '#888'; 
+                if (triggered) barColor = dom.colBass.value; 
+                
+                dom.bars[i].style.backgroundColor = barColor;
 
                 // Check Threshold
                 const thresh = state.thresholds[i];
@@ -297,12 +334,11 @@
                 }
             });
 
-            // Physics
             const sensitivity = 2.0; 
             let push = totalForce * sensitivity;
 
             if (push > state.physics) state.physics = push;
-            else state.physics *= 0.82; // Decay
+            else state.physics *= 0.82; 
             
             if(state.physics > 2.0) state.physics = 2.0;
             if(state.physics < 0.001) state.physics = 0;
@@ -321,11 +357,9 @@
             const shape = dom.shapeSelect.value;
             const gain = parseFloat(dom.preAmp.value);
 
-            // Calculate colors
             const cIdle = hexToRgb(dom.colIdle.value);
             const cBass = hexToRgb(dom.colBass.value);
             
-            // Mix factor based on physics (Flash on beat)
             let flashMix = 0;
             if(dom.freqFlash.checked) flashMix = phys; 
             if(flashMix > 1) flashMix = 1;
@@ -335,7 +369,6 @@
             const b = cIdle.b + (cBass.b - cIdle.b) * flashMix;
             const finalColor = `rgb(${r},${g},${b})`;
 
-            // Bounce Radius
             const rad = baseRad + (phys * 18);
 
             ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
@@ -345,7 +378,6 @@
             const angleStep = Math.PI / totalBars; 
 
             for(let i = 0; i < totalBars; i++) {
-                // Skip low bins to avoid DC offset, multiply index for spread
                 let index = 2 + i * 2;
                 let val = (data[index] * gain); 
                 if(val > 255) val = 255;
@@ -353,7 +385,6 @@
                 let h = (val / 255) * maxLen;
                 if(h < 4) h = 4;
 
-                // Draw Mirrored
                 drawBar(ctx, cx, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
                 drawBar(ctx, cx, cy, rad, w, h, -(i * angleStep) - (Math.PI/2), shape);
             }
@@ -363,29 +394,14 @@
             ctx.save();
             ctx.translate(cx, cy);
             ctx.rotate(angle);
-
-            if(shape === 'square') {
-                ctx.fillRect(rad, -w/2, h, w);
-            } 
-            else if (shape === 'triangle') {
-                ctx.beginPath();
-                ctx.moveTo(rad, -w/2);
-                ctx.lineTo(rad + h, 0); // Point
-                ctx.lineTo(rad, w/2);
-                ctx.fill();
-            } 
-            else if (shape === 'round') {
-                // Rounded bar (Capsule)
-                ctx.beginPath();
-                // We use roundRect if available, or arcs
-                if(ctx.roundRect) {
-                    ctx.roundRect(rad, -w/2, h, w, w/2);
-                } else {
-                    // Fallback for older browsers
-                    ctx.rect(rad, -w/2, h, w); 
-                }
-                ctx.fill();
+            ctx.beginPath();
+            if(shape === 'square') ctx.rect(rad, -w/2, h, w);
+            else if (shape === 'triangle') { ctx.moveTo(rad, -w/2); ctx.lineTo(rad + h, 0); ctx.lineTo(rad, w/2); }
+            else if (shape === 'round') { 
+                if(ctx.roundRect) ctx.roundRect(rad, -w/2, h, w, w/2); 
+                else ctx.rect(rad, -w/2, h, w); 
             }
+            ctx.fill();
             ctx.restore();
         }
 
@@ -401,7 +417,7 @@
                 if(document.getElementById('fx-flash').checked) f = p * 0.4;
             }
             dom.logo.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${s})`;
-            dom.logo.style.borderColor = `rgba(255,255,255,${0.05 + p})`; // Border glow
+            dom.logo.style.borderColor = `rgba(255,255,255,${0.05 + p})`; 
             dom.flash.style.opacity = f;
             dom.flash.style.background = 'white';
         }
@@ -423,8 +439,8 @@
             i.onload = () => {
                 const c = document.createElement('canvas'); const x = c.getContext('2d');
                 c.width=i.width; c.height=i.height; x.drawImage(i,0,0);
-                const p1 = x.getImageData(i.width/2, i.height/2, 1, 1).data; // Center
-                const p2 = x.getImageData(10, 10, 1, 1).data; // Corner
+                const p1 = x.getImageData(i.width/2, i.height/2, 1, 1).data; 
+                const p2 = x.getImageData(10, 10, 1, 1).data; 
                 state.extracted.bass = "#" + ((1<<24)+(p1[0]<<16)+(p1[1]<<8)+p1[2]).toString(16).slice(1);
                 state.extracted.idle = "#" + ((1<<24)+(p2[0]<<16)+(p2[1]<<8)+p2[2]).toString(16).slice(1);
                 if(dom.autoColor.checked) { dom.colBass.value = state.extracted.bass; dom.colIdle.value = state.extracted.idle; }
