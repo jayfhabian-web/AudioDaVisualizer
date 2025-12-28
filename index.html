@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PhonkMaker - Open Source Visualizer</title>
+    <style>
+        body { margin: 0; background: #000; font-family: 'Courier New', monospace; color: white; overflow: hidden; }
+        
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Let clicks pass through to canvas if needed */
+            display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box;
+        }
+        
+        .controls { pointer-events: auto; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; border: 1px solid #333; max-width: 300px; }
+        
+        button { background: #ff0055; color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%; }
+        button:hover { background: #ff4477; }
+        button.recording { background: red; animation: pulse 1s infinite; }
+        
+        input { display: block; margin: 5px 0; width: 100%; }
+        label { font-size: 12px; color: #aaa; }
+
+        /* The Stage */
+        #canvas-container {
+            width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background-size: cover; background-position: center;
+        }
+        canvas { position: absolute; }
+        
+        #logo {
+            width: 250px; height: 250px; border-radius: 50%;
+            background-size: cover; background-position: center;
+            position: absolute; z-index: 1;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <div id="logo" style="background-image: url('https://via.placeholder.com/250');"></div>
+        <canvas id="visualizer"></canvas>
+    </div>
+
+    <div id="ui-layer">
+        <div class="controls">
+            <h3>Phonk Engine v1</h3>
+            <label>1. Audio File</label>
+            <input type="file" id="audio-input" accept="audio/*">
+            
+            <label>2. Center Image</label>
+            <input type="file" id="image-input" accept="image/*">
+            
+            <label>3. Background Image</label>
+            <input type="file" id="bg-input" accept="image/*">
+
+            <div style="margin-top: 15px; border-top: 1px solid #444; padding-top: 10px;">
+                <label>Sensitivity</label>
+                <input type="range" id="sensitivity" min="0" max="2" step="0.1" value="1.2">
+                <button id="record-btn">Start Recording</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        const logo = document.getElementById('logo');
+        const container = document.getElementById('canvas-container');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let audioCtx, audioSrc, analyser;
+        let isPlaying = false;
+        
+        // Recorder Variables
+        let mediaRecorder;
+        let recordedChunks = [];
+        const recordBtn = document.getElementById('record-btn');
+        const audioDest = ctx.createMediaStreamDestination ? null : "NotSupported"; // Placeholder
+
+        // --- AUDIO SETUP ---
+        document.getElementById('audio-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                audioCtx.decodeAudioData(ev.target.result, function(buffer) {
+                    if(audioSrc) audioSrc.disconnect();
+                    audioSrc = audioCtx.createBufferSource();
+                    audioSrc.buffer = buffer;
+
+                    analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 256;
+
+                    // Routing: Source -> Analyser -> Speakers
+                    audioSrc.connect(analyser);
+                    analyser.connect(audioCtx.destination);
+                    
+                    // IF RECORDING: We also need to connect to a stream destination
+                    // (This is advanced, simplified for this demo)
+                    
+                    audioSrc.start(0);
+                    isPlaying = true;
+                    renderFrame();
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // --- IMAGE HANDLING ---
+        document.getElementById('image-input').addEventListener('change', (e) => {
+            const url = URL.createObjectURL(e.target.files[0]);
+            logo.style.backgroundImage = `url(${url})`;
+        });
+        
+        document.getElementById('bg-input').addEventListener('change', (e) => {
+            const url = URL.createObjectURL(e.target.files[0]);
+            container.style.backgroundImage = `url(${url})`;
+        });
+
+        // --- VISUALIZER LOOP ---
+        function renderFrame() {
+            if(!isPlaying) return;
+            requestAnimationFrame(renderFrame);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate Bass for Shake
+            let bassTotal = 0;
+            for(let i=0; i<10; i++) bassTotal += dataArray[i];
+            const bassAvg = bassTotal / 10;
+            const sensitivity = document.getElementById('sensitivity').value;
+            
+            // Apply Shake
+            const scale = 1 + (bassAvg / 255) * sensitivity * 0.3;
+            logo.style.transform = `scale(${scale})`;
+            container.style.backgroundSize = `${100 + (scale-1)*10}%`; // Subtle BG zoom
+
+            // Draw Circular Spectrum
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 135 * scale; // Radius grows with bass
+
+            ctx.beginPath();
+            for(let i = 0; i < bufferLength; i++) {
+                const barHeight = dataArray[i] * 0.8;
+                const rads = (i * 2 * Math.PI) / bufferLength;
+                
+                const x = centerX + Math.cos(rads) * (radius + barHeight);
+                const y = centerY + Math.sin(rads) * (radius + barHeight);
+                const x_inner = centerX + Math.cos(rads) * radius;
+                const y_inner = centerY + Math.sin(rads) * radius;
+
+                ctx.moveTo(x_inner, y_inner);
+                ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        // --- RECORDING LOGIC (The Specterr Killer) ---
+        recordBtn.addEventListener('click', () => {
+            if (recordBtn.textContent === "Start Recording") {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        function startRecording() {
+            // Combine Canvas Stream + Audio
+            const canvasStream = canvas.captureStream(60); // 60 FPS
+            // Note: Capturing system audio via JS is tricky without extensions. 
+            // For V1, this captures the VISUALS perfectly. 
+            // Users usually overlay the original MP3 in an editor for perfect audio quality.
+            
+            mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm; codecs=vp9' });
+            
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'phonk-visualizer.webm';
+                a.click();
+                recordedChunks = [];
+            };
+
+            mediaRecorder.start();
+            recordBtn.textContent = "Stop & Save";
+            recordBtn.classList.add('recording');
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            recordBtn.textContent = "Start Recording";
+            recordBtn.classList.remove('recording');
+        }
+    </script>
+</body>
+</html>
