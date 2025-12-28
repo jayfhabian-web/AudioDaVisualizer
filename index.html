@@ -2,75 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AudioDaVisualizer V19 - Auto Bass</title>
+    <title>Phonk Engine V20 - High Res Grit</title>
     <style>
         /* --- THEME --- */
         :root {
-            --bg: #050505;
-            --panel: rgba(15, 15, 15, 0.96);
-            --border: rgba(255, 255, 255, 0.1);
-            --primary: #ff0055; 
-            --accent: #00e5ff;
+            --bg: #000000;
+            --panel: rgba(10, 10, 10, 0.95);
+            --border: rgba(255, 255, 255, 0.15);
+            --primary: #ff0044; 
+            --accent: #ffffff;
             --text: #e0e0e0;
         }
 
-        body { margin: 0; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; color: var(--text); }
+        body { margin: 0; background: var(--bg); font-family: 'Segoe UI', monospace; overflow: hidden; color: var(--text); }
         
-        #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: overlay; transition: opacity 0.1s; }
+        #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: overlay; transition: opacity 0.05s; }
         #canvas-layer { position: absolute; top: 0; left: 0; z-index: 1; }
         
         #logo-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 300px; height: 300px; z-index: 5; border-radius: 50%; 
+            width: 320px; height: 320px; z-index: 5; border-radius: 50%; 
             background-size: cover; background-position: center;
-            box-shadow: 0 0 60px rgba(0,0,0,0.8);
+            box-shadow: 0 0 80px rgba(0,0,0,0.9);
             will-change: transform; 
         }
 
         /* UI PANEL */
         #ui-panel {
-            position: absolute; top: 0; left: 0; width: 340px; height: 100vh;
+            position: absolute; top: 0; left: 0; width: 320px; height: 100vh;
             background: var(--panel); border-right: 1px solid var(--border);
-            padding: 25px; box-sizing: border-box; z-index: 20; overflow-y: auto;
-            transition: transform 0.3s ease;
+            padding: 20px; box-sizing: border-box; z-index: 20; overflow-y: auto;
+            transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
         #ui-panel.hidden { transform: translateX(-100%); }
 
         /* HEADERS */
         h2 { 
-            font-size: 20px; color: #fff; margin: 0 0 25px 0; 
-            border-left: 4px solid var(--primary); padding-left: 10px;
-            text-transform: uppercase; font-weight: 900; letter-spacing: 1px;
-            outline: none; cursor: text;
+            font-size: 18px; color: #fff; margin: 0 0 20px 0; 
+            border-left: 3px solid var(--primary); padding-left: 12px;
+            text-transform: uppercase; font-weight: 800; letter-spacing: 2px;
         }
-        h3 { font-size: 11px; text-transform: uppercase; color: #777; margin-top: 30px; border-bottom: 1px solid #333; padding-bottom: 5px; font-weight: 700; letter-spacing: 1px; }
+        h3 { font-size: 10px; text-transform: uppercase; color: #666; margin-top: 25px; border-bottom: 1px solid #333; padding-bottom: 5px; font-weight: 700; letter-spacing: 1px; }
 
         /* CONTROLS */
-        .control-group { margin-bottom: 20px; }
-        label { display: flex; justify-content: space-between; font-size: 11px; color: #ccc; margin-bottom: 8px; font-weight: 600; }
-        
-        .status-tag { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #333; color: #aaa; text-transform: uppercase; }
-        .status-tag.active { background: var(--primary); color: white; }
+        .control-group { margin-bottom: 16px; }
+        label { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; }
 
-        input[type="range"] { width: 100%; height: 5px; background: #222; border-radius: 3px; appearance: none; cursor: pointer; border: 1px solid #333; }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.3); transition: transform 0.1s; }
-        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type="range"] { width: 100%; height: 4px; background: #222; border-radius: 2px; appearance: none; cursor: pointer; border: 1px solid #333; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         
-        input[type="file"] { width: 100%; background: #1a1a1a; border: 1px solid #333; color: #888; padding: 10px; border-radius: 6px; font-size: 11px; }
-        input[type="color"] { width: 100%; height: 35px; border: none; background: none; cursor: pointer; padding: 0; }
+        input[type="file"] { width: 100%; background: #111; border: 1px solid #333; color: #888; padding: 10px; border-radius: 4px; font-size: 10px; }
+        input[type="color"] { width: 100%; height: 30px; border: none; background: none; cursor: pointer; padding: 0; }
         
-        .checkbox-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background: #1a1a1a; padding: 10px; border-radius: 6px; border: 1px solid #2a2a2a; }
-        input[type="checkbox"] { accent-color: var(--primary); transform: scale(1.1); }
+        .checkbox-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #252525; }
 
-        /* ANALYZER METER */
-        .meter-container { height: 30px; background: #000; border-radius: 4px; position: relative; overflow: hidden; margin-top: 5px; border: 1px solid #333; }
-        .meter-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #333, var(--primary)); opacity: 0.5; transition: width 0.05s; }
-        .meter-peak { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; opacity: 0.5; }
-        .meter-thresh { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); z-index: 5; box-shadow: 0 0 8px var(--accent); transition: left 0.2s; }
-        .meter-val { position: absolute; right: 5px; top: 8px; font-size: 10px; color: white; font-weight: bold; z-index: 6; text-shadow: 0 0 4px black; }
-
-        /* HIDE BTN */
-        #toggle-ui { position: absolute; top: 20px; left: 360px; z-index: 25; background: #111; color: white; border: 1px solid #444; padding: 8px 16px; cursor: pointer; border-radius: 20px; font-size: 11px; transition: left 0.3s; font-weight: bold; }
+        /* LIVE MONITOR */
+        .monitor-box {
+            height: 40px; background: #000; border: 1px solid #333; border-radius: 4px; 
+            display: flex; align-items: flex-end; justify-content: space-between; padding: 0 2px;
+            margin-top: 5px; overflow: hidden; position: relative;
+        }
+        .bar-slice { width: 10%; background: #333; transition: height 0.05s; }
+        .bar-slice.active { background: var(--primary); }
+        .monitor-line { position: absolute; width: 100%; height: 1px; background: #fff; z-index: 10; opacity: 0.5; top: 50%; pointer-events: none;}
+        
+        #toggle-ui { position: absolute; top: 20px; left: 340px; z-index: 25; background: #000; color: white; border: 1px solid #333; padding: 8px 12px; cursor: pointer; border-radius: 4px; font-size: 10px; transition: left 0.2s; font-weight: bold; text-transform: uppercase;}
         #ui-panel.hidden + #toggle-ui { left: 20px; }
     </style>
 </head>
@@ -79,90 +75,88 @@
     <div id="flash-layer"></div>
     <canvas id="canvas-layer"></canvas>
     <div id="logo-container"></div>
-    <button id="toggle-ui" onclick="toggleUI()">Hide Controls</button>
+    <button id="toggle-ui" onclick="toggleUI()">HIDE UI</button>
 
     <div id="ui-panel" id="panel">
-        <h2 contenteditable="true" spellcheck="false">AudioDaVisualizer</h2>
+        <h2 contenteditable="true">PHONK V20 <span style="font-size:10px; opacity:0.5;">HI-RES</span></h2>
 
         <div class="control-group">
-            <label>Audio Track</label>
+            <label>Audio Source</label>
             <input type="file" id="file-in" accept="audio/*">
-            <audio id="audio" controls style="width:100%; margin-top:8px; height:30px; opacity:0.8;"></audio>
+            <audio id="audio" controls style="width:100%; margin-top:8px; height:25px; opacity:0.8;"></audio>
         </div>
         <div class="control-group">
-            <label>Logo / Cover Art</label>
+            <label>Cover Art</label>
             <input type="file" id="img-in" accept="image/*">
         </div>
 
-        <h3>1. Smart Audio Engine</h3>
+        <h3>1. Bass Targeting (High Res)</h3>
         
         <div class="control-group">
-            <label>
-                <span>Live Analysis</span>
-                <span id="status-badge" class="status-tag">IDLE</span>
-            </label>
-            <div class="meter-container">
-                <div id="m-fill" class="meter-fill"></div>
-                <div id="m-peak" class="meter-peak" style="left:0%"></div>
-                <div id="m-thresh" class="meter-thresh" style="left:50%"></div>
-                <span class="meter-val" id="db-val">-inf dB</span>
+            <label>Bass Frequency Monitor</label>
+            <div class="monitor-box" id="monitor">
+                <div class="monitor-line" id="thresh-line"></div>
+                <div class="bar-slice"></div><div class="bar-slice"></div><div class="bar-slice"></div>
+                <div class="bar-slice"></div><div class="bar-slice"></div><div class="bar-slice"></div>
+                <div class="bar-slice"></div><div class="bar-slice"></div><div class="bar-slice"></div>
+                <div class="bar-slice"></div>
             </div>
-            <div style="font-size:10px; color:#666; margin-top:5px; display:flex; justify-content:space-between;">
-                <span>Blue Line = Auto Threshold</span>
-                <span>White Line = Max Peak</span>
+            <div style="display:flex; justify-content:space-between; font-size:8px; color:#555; margin-top:2px;">
+                <span>20Hz (Sub)</span>
+                <span>80Hz (Punch)</span>
+                <span>150Hz (Grit)</span>
             </div>
         </div>
 
         <div class="control-group">
-            <label>Reaction Sensitivity (Only change this!)</label>
-            <input type="range" id="sens" min="0.5" max="1.5" step="0.05" value="1.0">
-            <div style="font-size:9px; color:#555; margin-top:4px;">Left: Needs LOUD bass to trigger • Right: Reacts to everything</div>
+            <label>Trigger Threshold (Blue Line)</label>
+            <input type="range" id="thresh" min="0" max="255" value="150" oninput="updThresh(this.value)">
         </div>
 
         <div class="control-group">
-            <label>Movement Decay (Smoothness)</label>
+            <label>Grit Multiplier (Punch)</label>
+            <input type="range" id="sens" min="1.0" max="4.0" step="0.1" value="2.5">
+        </div>
+
+        <div class="control-group">
+            <label>Physics Decay (Tightness)</label>
             <input type="range" id="decay" min="0.5" max="0.95" step="0.01" value="0.80">
         </div>
 
-        <h3>2. Visual Structure</h3>
+        <h3>2. Visuals</h3>
         <div class="checkbox-row">
             <input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()">
-            <span style="font-size:11px;font-weight:bold;">Auto-Extract Colors</span>
+            <span style="font-size:10px;font-weight:bold;">AUTO COLORS</span>
         </div>
         <div id="manual-colors" style="display:none; margin-bottom:15px;">
             <div style="display:flex; gap:10px;">
-                <div style="flex:1"><label>Bass Color</label><input type="color" id="col-bass" value="#ff0055"></div>
-                <div style="flex:1"><label>Rest Color</label><input type="color" id="col-audio" value="#ffffff"></div>
+                <div style="flex:1"><label>Bass</label><input type="color" id="col-bass" value="#ff0044"></div>
+                <div style="flex:1"><label>Mids</label><input type="color" id="col-audio" value="#ffffff"></div>
             </div>
         </div>
 
         <div class="control-group">
-            <label>Bar Thickness</label>
-            <input type="range" id="bar-width" min="2" max="40" value="18">
+            <label>Bar Width</label>
+            <input type="range" id="bar-width" min="2" max="50" value="20">
         </div>
         <div class="control-group">
-            <label>Bar Spacing</label>
-            <input type="range" id="bar-gap" min="0" max="10" value="2">
-        </div>
-        <div class="control-group">
-            <label>Ring Radius</label>
-            <input type="range" id="radius" min="100" max="350" value="160">
+            <label>Circle Size</label>
+            <input type="range" id="radius" min="100" max="400" value="180">
         </div>
 
-        <h3>3. Effects</h3>
+        <h3>3. FX</h3>
         <div class="checkbox-row" style="flex-wrap:wrap;">
-            <label style="margin-right:15px; cursor:pointer;"><input type="checkbox" id="fx-zoom" checked> Zoom</label>
-            <label style="margin-right:15px; cursor:pointer;"><input type="checkbox" id="fx-shake" checked> Shake</label>
-            <label style="cursor:pointer;"><input type="checkbox" id="fx-flash" checked> Flash</label>
+            <label style="margin-right:15px; cursor:pointer;"><input type="checkbox" id="fx-zoom" checked> ZOOM</label>
+            <label style="margin-right:15px; cursor:pointer;"><input type="checkbox" id="fx-shake" checked> SHAKE</label>
+            <label style="cursor:pointer;"><input type="checkbox" id="fx-flash" checked> FLASH</label>
         </div>
         <div class="control-group">
-            <label>Effect Intensity</label>
+            <label>Master Intensity</label>
             <input type="range" id="fx-int" min="0" max="2" step="0.1" value="1.0">
         </div>
     </div>
 
     <script>
-        // --- DOM REFS ---
         const dom = {
             audio: document.getElementById('audio'),
             canvas: document.getElementById('canvas-layer'),
@@ -170,13 +164,8 @@
             logo: document.getElementById('logo-container'),
             flash: document.getElementById('flash-layer'),
             panel: document.getElementById('ui-panel'),
-            // Meter Refs
-            mFill: document.getElementById('m-fill'),
-            mPeak: document.getElementById('m-peak'),
-            mThresh: document.getElementById('m-thresh'),
-            dbVal: document.getElementById('db-val'),
-            status: document.getElementById('status-badge'),
-            // Colors
+            monitor: document.getElementById('monitor').querySelectorAll('.bar-slice'),
+            tLine: document.getElementById('thresh-line'),
             colBass: document.getElementById('col-bass'),
             colAudio: document.getElementById('col-audio'),
             autoColor: document.getElementById('auto-color')
@@ -184,98 +173,89 @@
         dom.canvas.width = window.innerWidth;
         dom.canvas.height = window.innerHeight;
 
-        // --- STATE & ANALYSIS VARS ---
         const state = {
             connected: false,
             physics: 0,
-            extracted: { bass: '#ff0055', audio: '#ffffff' },
-            // Auto-Gain Logic
-            avgVol: 0,      // Rolling average of volume
-            peakVol: 100,   // Highest volume seen recently
-            frame: 0
+            extracted: { bass: '#ff0044', audio: '#ffffff' }
         };
 
         let audioCtx, source, analyser;
 
-        // --- INIT AUDIO ---
         dom.audio.addEventListener('play', () => {
             if(state.connected) { if(audioCtx.state === 'suspended') audioCtx.resume(); return; }
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             source = audioCtx.createMediaElementSource(dom.audio);
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256; 
+            
+            // --- THE UPGRADE ---
+            // 2048 size = 1024 bins.
+            // Sample Rate 44100 / 2048 = ~21.5Hz per bin.
+            // This gives us SURGICAL precision on the bass.
+            analyser.fftSize = 2048; 
+            
             source.connect(analyser);
             source.connect(audioCtx.destination); 
             state.connected = true;
-            dom.status.innerText = "LISTENING...";
-            dom.status.classList.add('active');
             loop();
         });
 
-        dom.audio.addEventListener('pause', () => {
-             dom.status.innerText = "PAUSED";
-             dom.status.classList.remove('active');
-        });
-
-        // --- MAIN ENGINE LOOP ---
         function loop() {
             requestAnimationFrame(loop);
-            const buffer = analyser.frequencyBinCount;
+            const buffer = analyser.frequencyBinCount; // 1024 bins
             const data = new Uint8Array(buffer);
             analyser.getByteFrequencyData(data);
-            state.frame++;
 
-            // 1. SMART ANALYSIS (The Brain)
-            // Get Deep Bass Average (0-4 bins)
-            let bassSum = 0;
-            for(let i=0; i<5; i++) bassSum += data[i];
-            let currentBass = bassSum / 5;
+            // --- 1. SURGICAL BASS DETECTION ---
+            // Because our resolution is high, we can target specific frequencies.
+            // Bins 1-3: 20Hz - 60Hz (Deep Sub)
+            // Bins 4-7: 60Hz - 150Hz (The "Grit" / Kick Punch)
+            // We ignore Bin 0 (DC offset/Rumble) and Bins 8+ (Vocals/Snare)
+            
+            let bassEnergy = 0;
+            let monitorData = []; // For the little UI visualizer
 
-            // Rolling Average (Slowly learns the "Floor" noise level)
-            state.avgVol = (state.avgVol * 0.99) + (currentBass * 0.01);
+            // We scan just the first 10 relevant bins (approx 20Hz to 200Hz)
+            for(let i=1; i<=10; i++) {
+                bassEnergy += data[i];
+                monitorData.push(data[i]);
+            }
+            bassEnergy = bassEnergy / 10; // Average energy
 
-            // Peak Tracking (Slowly learns the "Ceiling" max volume)
-            if(currentBass > state.peakVol) state.peakVol = currentBass; 
-            else state.peakVol *= 0.999; // Slowly decay peak so it adapts if song gets quieter
+            // --- 2. UPDATE MONITOR UI ---
+            // This shows the user exactly what the engine is "seeing"
+            const thresh = parseInt(document.getElementById('thresh').value);
+            monitorData.forEach((val, idx) => {
+                if(dom.monitor[idx]) {
+                    dom.monitor[idx].style.height = (val / 255 * 100) + "%";
+                    // Highlight bars that are triggering the threshold
+                    dom.monitor[idx].className = (val > thresh) ? 'bar-slice active' : 'bar-slice';
+                }
+            });
+            dom.tLine.style.bottom = (thresh / 255 * 100) + "%";
 
-            // 2. DYNAMIC THRESHOLD CALCULATION
-            // The threshold is not fixed. It moves based on the song's average volume.
-            // "Sensitivity" slider adjusts how far above the average we need to be to trigger.
+            // --- 3. TRIGGER LOGIC ---
             const sens = parseFloat(document.getElementById('sens').value);
-            
-            // This is the Magic Formula:
-            // Threshold = Average + (Distance to Peak * (1.5 - Sensitivity))
-            // Basically: "Trigger somewhere between the average noise and the max peak"
-            let dynamicThresh = state.avgVol + ((state.peakVol - state.avgVol) * (1.5 - sens) * 0.6);
-
-            // 3. CALCULATE FORCE
             let force = 0;
-            if (currentBass > dynamicThresh) {
-                // How far over the line are we? (Normalized 0.0 to 1.0)
-                let headroom = state.peakVol - dynamicThresh;
-                if(headroom < 1) headroom = 1; // Safety
-                force = (currentBass - dynamicThresh) / headroom;
+
+            if (bassEnergy > thresh) {
+                // Normalize force (0.0 to 1.0)
+                let overflow = bassEnergy - thresh;
+                force = (overflow / (255 - thresh)); 
+                force *= sens;
             }
 
-            // 4. UPDATE UI DEBUGGER (So you can see it thinking)
-            dom.mFill.style.width = (currentBass / 255 * 100) + "%";
-            dom.mPeak.style.left = (state.peakVol / 255 * 100) + "%";
-            dom.mThresh.style.left = (dynamicThresh / 255 * 100) + "%";
-            
-            if(state.frame % 10 === 0) { // Update text less often
-                dom.dbVal.innerText = Math.round(currentBass) + " / " + Math.round(dynamicThresh);
-            }
-
-            // 5. PHYSICS SMOOTHING
+            // --- 4. PHYSICS ENGINE ---
             const decay = parseFloat(document.getElementById('decay').value);
-            if(force > state.physics) state.physics = force; // Instant Attack
-            else state.physics *= decay; // Smooth Release
+            if(force > state.physics) {
+                state.physics = force; // Instant Hit
+            } else {
+                state.physics *= decay; // Smooth Release
+            }
             
-            // Hard Clamp (0.0 - 2.0)
+            // Safety Clamp
+            if(state.physics > 2.5) state.physics = 2.5;
             if(state.physics < 0.001) state.physics = 0;
-            if(state.physics > 2.0) state.physics = 2.0;
 
-            // 6. DRAW & FX
             draw(data, buffer, state.physics);
             applyFx(state.physics);
         }
@@ -284,39 +264,55 @@
             const ctx = dom.ctx;
             const cx = dom.canvas.width / 2;
             const cy = dom.canvas.height / 2;
-            const rad = parseInt(document.getElementById('radius').value) + (phys * 20);
+            const rad = parseInt(document.getElementById('radius').value) + (phys * 25);
             
             const w = parseFloat(document.getElementById('bar-width').value);
-            const gap = parseFloat(document.getElementById('bar-gap').value);
             const cBass = dom.colBass.value;
             const cAudio = dom.colAudio.value;
 
             ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
-            const angleStep = (2 * Math.PI) / count;
 
-            for(let i = 0; i < count; i++) {
-                // Height is normalized by our learnt Peak Volume
-                // This ensures quiet songs still look big, and loud songs don't explode
-                let val = data[i];
-                let normVal = val / state.peakVol; // Normalize
-                if(normVal > 1) normVal = 1;
-                
-                let h = normVal * 120;
+            // Since we have 1024 bins, drawing all of them looks too thin.
+            // We will downsample for the visual (skip every 8 bins) to keep the "Blocky" look.
+            const visualStep = 6; 
+            const visualCount = Math.floor(count / visualStep); 
+            const angleStep = (2 * Math.PI) / (visualCount * 0.7); // Only use 70% of circle for audio data? No, let's wrap 100%
 
-                // Bass Bars
-                if (i < 8) { 
+            // Actually, let's just draw the first 100 bins (0Hz to 2kHz) spread around the circle.
+            // This focuses the visual on the Bass/Mids and ignores high hat hiss.
+            const barsToDraw = 120;
+            const radStep = (2 * Math.PI) / barsToDraw;
+
+            for(let i = 0; i < barsToDraw; i++) {
+                let val = data[i]; // No skipping, just raw low-end data
+                let h = (val / 255) * 140;
+
+                // Color Logic
+                if (i < 15) { // The "Grit" Zone
                     ctx.fillStyle = cBass;
-                    h *= (1 + (phys * 0.8)); 
+                    h *= (1 + (phys * 0.5)); 
                 } else {
                     ctx.fillStyle = cAudio;
                 }
 
-                if (h > 2) {
-                    const ang = (i * angleStep) - (Math.PI / 2);
+                if (h > 5) {
+                    const ang = (i * radStep) - (Math.PI / 2);
                     ctx.save();
                     ctx.translate(cx, cy);
                     ctx.rotate(ang);
-                    roundRect(ctx, -w/2, rad + gap, w, h, 6);
+                    // Draw simple blocky bars for that gritty look
+                    ctx.fillRect(-w/2, rad + 2, w, h); 
+                    
+                    // Mirror them for symmetry if desired, or just full circle
+                    // Let's do a double circle (Stereo look)
+                    // Actually, simple full circle is best for Phonk style
+                    ctx.restore();
+
+                    // Mirror Mode (Optional, fills the circle better)
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(-ang - Math.PI); // Mirror angle
+                    ctx.fillRect(-w/2, rad + 2, w, h);
                     ctx.restore();
                 }
             }
@@ -327,33 +323,21 @@
             let s=1, x=0, y=0, f=0;
 
             if (p > 0.01) {
-                if(document.getElementById('fx-zoom').checked) s += (p * 0.2 * mag);
+                if(document.getElementById('fx-zoom').checked) s += (p * 0.3 * mag);
                 if(document.getElementById('fx-shake').checked) {
-                    const shake = p * 15 * mag;
+                    const shake = p * 20 * mag; // Intense shake for grit
                     x = (Math.random()-0.5) * shake;
                     y = (Math.random()-0.5) * shake;
                 }
-                if(document.getElementById('fx-flash').checked) f = p * 0.5 * mag;
+                if(document.getElementById('fx-flash').checked) f = p * 0.6 * mag;
             }
 
             dom.logo.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${s})`;
             dom.flash.style.opacity = f;
+            dom.flash.style.background = 'white';
         }
 
-        function roundRect(ctx, x, y, w, h, r) {
-            if (w < 2 * r) r = w / 2;
-            if (h < 2 * r) r = h / 2;
-            ctx.beginPath();
-            ctx.moveTo(x+r, y);
-            ctx.arcTo(x+w, y,   x+w, y+h, r);
-            ctx.arcTo(x+w, y+h, x,   y+h, r);
-            ctx.arcTo(x,   y+h, x,   y,   r);
-            ctx.arcTo(x,   y,   x+w, y,   r);
-            ctx.closePath();
-            ctx.fill();
-        }
-
-        // --- UTILS ---
+        window.updThresh = (v) => { dom.tLine.style.bottom = (v/255*100) + "%"; };
         window.toggleUI = () => dom.panel.classList.toggle('hidden');
         window.toggleAutoColor = () => {
             const a = dom.autoColor.checked;
