@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk Engine V41 - Performance & Tools</title>
+    <title>Phonk Engine V42 - Render Edition</title>
     <style>
         /* --- CORE STYLES --- */
-        :root { --bg: #050505; --panel: #111; --accent: #ff0033; --text: #ccc; --tool-active: #333; }
+        :root { --bg: #050505; --panel: #111; --accent: #ff0033; --text: #ccc; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         * { user-select: none; box-sizing: border-box; }
 
-        /* --- VISUALIZER (TOP) --- */
+        /* --- VISUALIZER --- */
         #viewport {
             flex: 1; position: relative; overflow: hidden;
             background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
@@ -22,22 +22,27 @@
             background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #333;
             display: flex; gap: 10px;
         }
+        
+        /* EXPORT OVERLAY */
+        #render-status {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9); padding: 20px; border: 2px solid var(--accent);
+            z-index: 1000; text-align: center; display: none;
+        }
 
-        /* --- TIMELINE (BOTTOM) --- */
+        /* --- TIMELINE --- */
         #timeline-area { height: 260px; background: #0e0e0e; border-top: 1px solid #333; display: flex; flex-direction: column; z-index: 20; }
         
-        /* TOOLBAR */
         #toolbar {
             height: 40px; background: #151515; display: flex; align-items: center; padding: 0 10px; gap: 10px; border-bottom: 1px solid #222;
         }
-        .tool-group { display: flex; gap: 2px; border-right: 1px solid #333; padding-right: 10px; }
         .btn {
             background: #222; border: 1px solid #444; color: #aaa; padding: 4px 8px; font-size: 10px; cursor: pointer; border-radius: 3px;
         }
         .btn:hover { background: #333; color: #fff; }
         .btn.active-tool { background: var(--accent); color: #fff; border-color: var(--accent); }
-        .btn-icon { width: 24px; text-align: center; font-weight: bold; }
-
+        
+        /* The Canvas Container handles scrolling */
         #timeline-scroll { flex: 1; overflow-x: auto; overflow-y: hidden; position: relative; background: #080808; }
         #tl-canvas { display: block; height: 100%; }
 
@@ -61,8 +66,17 @@
         <div id="top-controls">
             <button class="btn" id="btn-load">📂 LOAD AUDIO</button>
             <input type="file" id="inp-file" style="display:none" accept="audio/*">
+            <span style="border-right:1px solid #444; margin:0 5px;"></span>
             <button class="btn" id="btn-undo">↶ UNDO</button>
             <button class="btn" id="btn-redo">↷ REDO</button>
+            <span style="border-right:1px solid #444; margin:0 5px;"></span>
+            <button class="btn" id="btn-export" style="color:var(--accent);">🔴 EXPORT VIDEO</button>
+        </div>
+
+        <div id="render-status">
+            <h2 style="margin:0 0 10px 0; color:var(--accent)">RENDERING...</h2>
+            <div style="font-size:12px; color:#aaa;">Please wait. Do not switch tabs.</div>
+            <div id="render-prog" style="font-size:20px; font-weight:bold; margin-top:10px;">0%</div>
         </div>
     </div>
 
@@ -70,14 +84,14 @@
         <div id="toolbar">
             <button id="btn-play" class="btn" style="width:60px;">▶ PLAY</button>
             
-            <div class="tool-group">
-                <button class="btn btn-icon active-tool" id="tool-sel" title="Select/Move/Trim (V)">V</button>
-                <button class="btn btn-icon" id="tool-split" title="Split/Snip (C)">✂</button>
-                <button class="btn btn-icon" id="tool-del" title="Delete (D)">🗑</button>
+            <div style="display:flex; gap:2px; border-right:1px solid #333; padding-right:10px;">
+                <button class="btn active-tool" id="tool-sel" title="Select (V)">V</button>
+                <button class="btn" id="tool-split" title="Split (C)">✂</button>
+                <button class="btn" id="tool-del" title="Delete (D)">🗑</button>
             </div>
             
-            <div class="tool-group" style="border:none;">
-                <span style="font-size:10px; color:#666; margin-right:5px;">ADD:</span>
+            <div style="display:flex; gap:5px;">
+                <span style="font-size:10px; color:#666;">DRAG:</span>
                 <div class="btn" draggable="true" ondragstart="dragStart(event, 'shake')">Shake</div>
                 <div class="btn" draggable="true" ondragstart="dragStart(event, 'flash')">Flash</div>
                 <div class="btn" draggable="true" ondragstart="dragStart(event, 'glitch')">Glitch</div>
@@ -90,7 +104,7 @@
         
         <div id="block-editor">
             <div style="display:flex; justify-content:space-between;">
-                <strong style="color:var(--accent)">PROPERTIES</strong>
+                <strong style="color:var(--accent)">EDIT</strong>
                 <button onclick="closeEditor()" style="background:none; border:none; color:#666; cursor:pointer;">x</button>
             </div>
             <div class="ed-row">
@@ -110,14 +124,13 @@
     </div>
 
     <script>
-        // --- MODULE: HISTORY (UNDO/REDO) ---
+        // --- HISTORY MODULE ---
         const history = {
             past: [], future: [],
             save: () => {
-                // Deep copy blocks
                 history.past.push(JSON.stringify(state.blocks));
                 if(history.past.length > 20) history.past.shift();
-                history.future = []; // Clear redo on new action
+                history.future = [];
             },
             undo: () => {
                 if(history.past.length === 0) return;
@@ -133,105 +146,197 @@
             }
         };
 
-        // --- MODULE: STATE ---
+        // --- STATE MODULE ---
         const state = {
             ctx: null, buf: null, src: null, anal: null,
             play: false, start: 0, pause: 0, dur: 0,
-            zoom: 100, // px per sec
-            blocks: [], // { id, type, start, dur, str, ease }
-            tool: 'sel', // sel, split, del
-            dragObj: null, // For moving/resizing
-            dragMode: null, // 'move', 'resize-l', 'resize-r'
-            selBlock: null,
+            zoom: 100,
+            blocks: [], 
+            tool: 'sel', 
+            dragObj: null, dragMode: null, selBlock: null,
             
             // Caching
             cacheCanvas: document.createElement('canvas'),
-            needsRedraw: false
+            
+            // Rendering
+            isRendering: false,
+            mediaRecorder: null,
+            chunks: []
         };
 
         const cvs = { tl: document.getElementById('tl-canvas'), vis: document.getElementById('c-vis'), fx: document.getElementById('c-fx') };
         const ctx = { tl: cvs.tl.getContext('2d'), vis: cvs.vis.getContext('2d'), fx: cvs.fx.getContext('2d') };
 
-        // --- MODULE: INIT & EVENTS ---
+        // --- INIT ---
         function init() {
             resize(); window.onresize = resize;
             
-            // File
+            // File Load
             document.getElementById('btn-load').onclick = () => document.getElementById('inp-file').click();
             document.getElementById('inp-file').onchange = async (e) => {
                 const ab = await e.target.files[0].arrayBuffer();
                 state.ctx = new (window.AudioContext||window.webkitAudioContext)();
                 state.buf = await state.ctx.decodeAudioData(ab);
                 state.dur = state.buf.duration;
+                
+                // Init Dimensions
                 cvs.tl.width = state.cacheCanvas.width = state.dur * state.zoom;
                 cvs.tl.height = state.cacheCanvas.height = document.getElementById('timeline-scroll').clientHeight;
-                renderStaticWaveform(); // Draw ONCE to cache
+                
+                renderStaticWaveform(); // Cache it
                 redrawTimelineLayer();
             };
 
-            // Toolbar
-            document.getElementById('btn-play').onclick = togglePlay;
+            // Controls
+            document.getElementById('btn-play').onclick = () => togglePlay();
             document.getElementById('btn-undo').onclick = history.undo;
             document.getElementById('btn-redo').onclick = history.redo;
-            
+            document.getElementById('btn-export').onclick = startExport;
+
+            // Tools
             ['sel', 'split', 'del'].forEach(t => {
                 document.getElementById(`tool-${t}`).onclick = (e) => {
                     document.querySelectorAll('.active-tool').forEach(b=>b.classList.remove('active-tool'));
                     e.target.classList.add('active-tool');
                     state.tool = t;
-                    cvs.tl.style.cursor = t === 'sel' ? 'default' : (t === 'split' ? 'crosshair' : 'not-allowed');
                 };
             });
-
-            // Keyboard Shortcuts
-            window.onkeydown = (e) => {
-                if(e.ctrlKey && e.key === 'z') history.undo();
-                if(e.ctrlKey && e.key === 'y') history.redo();
-                if(e.key === 'v') document.getElementById('tool-sel').click();
-                if(e.key === 'c') document.getElementById('tool-split').click();
-                if(e.key === 'd') document.getElementById('tool-del').click();
-            };
 
             setupTimelineInteraction();
             loop();
         }
 
         function resize() {
-            const vp = document.getElementById('viewport');
-            cvs.vis.width = cvs.fx.width = vp.clientWidth;
-            cvs.vis.height = cvs.fx.height = vp.clientHeight;
+            cvs.vis.width = cvs.fx.width = document.getElementById('viewport').clientWidth;
+            cvs.vis.height = cvs.fx.height = document.getElementById('viewport').clientHeight;
         }
 
-        // --- MODULE: TIMELINE LOGIC (INTERACTION) ---
+        // --- AUDIO ENGINE ---
+        function togglePlay(forceTime = null) {
+            if(state.isRendering) return;
+
+            if(state.play) {
+                // STOP
+                if(state.src) state.src.stop();
+                state.play = false;
+                state.pause = state.ctx.currentTime - state.start;
+                document.getElementById('btn-play').innerText = "▶ PLAY";
+                
+                // If forced seek while playing
+                if(forceTime !== null) {
+                    state.pause = forceTime;
+                    togglePlay(); // Restart immediately at new time
+                }
+            } else {
+                // START
+                state.src = state.ctx.createBufferSource();
+                state.src.buffer = state.buf;
+                state.anal = state.ctx.createAnalyser();
+                state.src.connect(state.anal);
+                state.src.connect(state.ctx.destination);
+                
+                // If seeking while paused
+                if(forceTime !== null) state.pause = forceTime;
+
+                state.start = state.ctx.currentTime - state.pause;
+                state.src.start(0, state.pause);
+                state.play = true;
+                document.getElementById('btn-play').innerText = "⏸ STOP";
+            }
+            redrawTimelineLayer();
+        }
+
+        // --- EXPORT RENDERER ---
+        function startExport() {
+            if(!state.buf || state.isRendering) return;
+            state.isRendering = true;
+            document.getElementById('render-status').style.display = 'block';
+
+            // 1. Setup Stream
+            const stream = cvs.vis.captureStream(60); // 60 FPS
+            
+            // 2. Setup Audio Dest
+            const dest = state.ctx.createMediaStreamDestination();
+            state.src = state.ctx.createBufferSource();
+            state.src.buffer = state.buf;
+            state.anal = state.ctx.createAnalyser();
+            state.src.connect(state.anal);     // To Visualizer
+            state.src.connect(dest);           // To Recorder
+            state.src.connect(state.ctx.destination); // To Speaker (Monitoring)
+
+            // 3. Add Audio Track to Video Stream
+            const audioTrack = dest.stream.getAudioTracks()[0];
+            stream.addTrack(audioTrack);
+
+            // 4. Recorder
+            state.chunks = [];
+            state.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+            
+            state.mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) state.chunks.push(e.data);
+            };
+            
+            state.mediaRecorder.onstop = () => {
+                const blob = new Blob(state.chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'phonk_visualizer.webm';
+                a.click();
+                
+                // Cleanup
+                state.isRendering = false;
+                document.getElementById('render-status').style.display = 'none';
+                state.play = false;
+                document.getElementById('btn-play').innerText = "▶ PLAY";
+            };
+
+            // 5. Start
+            state.mediaRecorder.start();
+            state.start = state.ctx.currentTime;
+            state.src.start(0); // Play from start
+            state.play = true;
+
+            // 6. Stop when done
+            state.src.onended = () => {
+                state.mediaRecorder.stop();
+            };
+        }
+
+        // --- TIMELINE INTERACTION ---
         function setupTimelineInteraction() {
-            let startX = 0;
-            let originalStart = 0; 
-            let originalDur = 0;
+            let startX=0, origStart=0, origDur=0;
 
             cvs.tl.onmousedown = (e) => {
-                if(!state.buf) return;
-                history.save(); // Save state before edit
+                if(!state.buf || state.isRendering) return;
                 
                 const rect = cvs.tl.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const t = x / state.zoom;
                 
-                // Find Block
+                // Hit Test
                 const hit = state.blocks.find(b => t >= b.start && t <= b.start + b.dur);
                 
-                if(state.tool === 'del' && hit) {
+                // ACTION: SEEKING (If no block clicked OR tool isn't Select/Split/Del)
+                // Actually, if we click empty space, we ALWAYS seek.
+                if(!hit) {
+                    togglePlay(t); // Seek to t
+                    return;
+                }
+
+                // If we hit a block...
+                history.save();
+
+                if(state.tool === 'del') {
                     state.blocks = state.blocks.filter(b => b !== hit);
                     redrawTimelineLayer();
                     return;
                 }
                 
-                if(state.tool === 'split' && hit) {
-                    // Split logic
+                if(state.tool === 'split') {
                     const offset = t - hit.start;
                     const newDur = hit.dur - offset;
-                    
-                    hit.dur = offset; // Shorten old
-                    
+                    hit.dur = offset;
                     const newBlock = { ...hit, id: Date.now(), start: t, dur: newDur };
                     state.blocks.push(newBlock);
                     redrawTimelineLayer();
@@ -239,101 +344,63 @@
                 }
 
                 if(state.tool === 'sel') {
-                    if(hit) {
-                        state.selBlock = hit;
-                        openEditor(hit, e.clientX, e.clientY);
-                        
-                        // Check Edges for Trim
-                        const pxStart = hit.start * state.zoom;
-                        const pxEnd = (hit.start + hit.dur) * state.zoom;
-                        
-                        if(Math.abs(x - pxStart) < 10) {
-                            state.dragMode = 'resize-l';
-                            state.dragObj = hit;
-                        } else if(Math.abs(x - pxEnd) < 10) {
-                            state.dragMode = 'resize-r';
-                            state.dragObj = hit;
-                        } else {
-                            state.dragMode = 'move';
-                            state.dragObj = hit;
-                        }
-                        
-                        startX = x;
-                        originalStart = hit.start;
-                        originalDur = hit.dur;
-                    } else {
-                        // Clicked empty space
-                        closeEditor();
-                    }
+                    state.selBlock = hit;
+                    openEditor(hit, e.clientX, e.clientY);
+                    
+                    const pxStart = hit.start * state.zoom;
+                    const pxEnd = (hit.start + hit.dur) * state.zoom;
+                    
+                    if(Math.abs(x - pxStart) < 10) { state.dragMode = 'resize-l'; state.dragObj = hit; }
+                    else if(Math.abs(x - pxEnd) < 10) { state.dragMode = 'resize-r'; state.dragObj = hit; }
+                    else { state.dragMode = 'move'; state.dragObj = hit; }
+                    
+                    startX = x;
+                    origStart = hit.start;
+                    origDur = hit.dur;
                 }
             };
 
             window.onmousemove = (e) => {
-                if(state.tool !== 'sel') return;
+                if(state.isRendering) return;
                 const rect = cvs.tl.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 
-                // Cursor Logic
+                // Cursor logic
                 if(!state.dragMode) {
                     const t = x / state.zoom;
                     const hit = state.blocks.find(b => t >= b.start && t <= b.start + b.dur);
-                    if(hit) {
-                        const pxStart = hit.start * state.zoom;
-                        const pxEnd = (hit.start + hit.dur) * state.zoom;
-                        if(Math.abs(x - pxStart) < 10 || Math.abs(x - pxEnd) < 10) cvs.tl.style.cursor = 'col-resize';
-                        else cvs.tl.style.cursor = 'move';
-                    } else {
-                        cvs.tl.style.cursor = 'default';
-                    }
+                    if(hit && state.tool === 'sel') cvs.tl.style.cursor = 'move';
+                    else if(hit && state.tool === 'split') cvs.tl.style.cursor = 'crosshair';
+                    else cvs.tl.style.cursor = 'default';
                 }
 
-                // Dragging Logic
                 if(state.dragObj && state.dragMode) {
                     const dx = (x - startX) / state.zoom;
-                    
-                    if(state.dragMode === 'move') {
-                        state.dragObj.start = originalStart + dx;
-                    } else if(state.dragMode === 'resize-r') {
-                        state.dragObj.dur = Math.max(0.1, originalDur + dx);
-                    } else if(state.dragMode === 'resize-l') {
-                        const newStart = originalStart + dx;
-                        const newDur = originalDur - dx;
-                        if(newDur > 0.1) {
-                            state.dragObj.start = newStart;
-                            state.dragObj.dur = newDur;
-                        }
-                    }
+                    if(state.dragMode === 'move') state.dragObj.start = origStart + dx;
+                    else if(state.dragMode === 'resize-r') state.dragObj.dur = Math.max(0.1, origDur + dx);
                     redrawTimelineLayer();
                 }
             };
 
-            window.onmouseup = () => {
-                state.dragObj = null;
-                state.dragMode = null;
-            };
+            window.onmouseup = () => { state.dragObj = null; state.dragMode = null; };
         }
 
-        // --- MODULE: DRAG & DROP NEW BLOCKS ---
+        // --- DRAG & DROP ---
         window.dragStart = (e, type) => { e.dataTransfer.setData('type', type); };
         window.allowDrop = (e) => e.preventDefault();
         window.handleDrop = (e) => {
             e.preventDefault();
             history.save();
-            const type = e.dataTransfer.getData('type');
             const rect = document.getElementById('timeline-scroll').getBoundingClientRect();
             const scroll = document.getElementById('timeline-scroll').scrollLeft;
             const x = (e.clientX - rect.left) + scroll;
             const t = x / state.zoom;
-            
-            state.blocks.push({
-                id: Date.now(), type: type, start: t, dur: 1.0, str: 50, ease: 'linear'
-            });
+            state.blocks.push({ id: Date.now(), type: e.dataTransfer.getData('type'), start: t, dur: 1.0, str: 50, ease: 'linear' });
             redrawTimelineLayer();
         };
 
-        // --- MODULE: RENDERING (OPTIMIZED) ---
+        // --- RENDERERS ---
         function renderStaticWaveform() {
-            // Draws background ONCE to state.cacheCanvas
             const c = state.cacheCanvas.getContext('2d');
             const w = state.cacheCanvas.width;
             const h = state.cacheCanvas.height;
@@ -342,125 +409,121 @@
             
             c.fillStyle = '#111'; c.fillRect(0,0,w,h);
             
-            // Draw Waveform with HEADROOM (0.8 scale)
+            // Draw Wave with HEADROOM
             c.fillStyle = '#555';
-            c.beginPath();
             for(let i=0; i<w; i++) {
                 let min=1.0, max=-1.0;
                 for(let j=0; j<step; j++) {
-                    const datum = data[(i*step)+j];
-                    if(datum < min) min = datum;
-                    if(datum > max) max = datum;
+                    const d = data[(i*step)+j];
+                    if(d<min)min=d; if(d>max)max=d;
                 }
-                // Math: Center is h/2. Max height is h.
-                // We want (max-min) * (h/2) * 0.8 to leave 10% gap top/bottom
-                const y = (1 + min) * (h/2) * 0.8 + (h * 0.1); 
-                const height = Math.max(1, (max - min) * (h/2) * 0.8);
-                c.fillRect(i, y, 1, height);
+                const y = (1+min)*(h/2)*0.8 + (h*0.1);
+                const ht = Math.max(1, (max-min)*(h/2)*0.8);
+                c.fillRect(i, y, 1, ht);
             }
         }
 
         function redrawTimelineLayer() {
-            state.needsRedraw = true;
+            if(!state.buf) return;
+            const c = ctx.tl;
+            const w = cvs.tl.width; const h = cvs.tl.height;
+            
+            c.drawImage(state.cacheCanvas, 0, 0); // Blit BG
+            
+            state.blocks.forEach(b => {
+                const x = b.start * state.zoom;
+                const bw = b.dur * state.zoom;
+                
+                if(b.type==='shake') c.fillStyle = 'rgba(255, 50, 50, 0.5)';
+                else if(b.type==='flash') c.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                else c.fillStyle = 'rgba(50, 150, 255, 0.5)';
+                
+                if(state.selBlock === b) { c.strokeStyle='#fff'; c.strokeRect(x,10,bw,h-20); }
+                c.fillRect(x,10,bw,h-20);
+                c.fillStyle='#fff'; c.fillText(b.type, x+2, 22);
+            });
         }
 
         function loop() {
             requestAnimationFrame(loop);
-            
-            // 1. Audio Time
             const t = state.play ? (state.ctx.currentTime - state.start) : state.pause;
             
-            // 2. Render Timeline (Hybrid Approach)
-            // We only redraw the dynamic parts (blocks + playhead) every frame?
-            // Actually, blitting the full background image is super fast.
-            
+            if(state.isRendering) {
+                const prog = Math.floor((t / state.dur) * 100);
+                document.getElementById('render-prog').innerText = prog + '%';
+            }
+
             if(state.buf) {
-                const c = ctx.tl;
-                const w = cvs.tl.width; const h = cvs.tl.height;
-                
-                // A. Blit Background (Instant)
-                c.drawImage(state.cacheCanvas, 0, 0);
-                
-                // B. Draw Blocks
-                state.blocks.forEach(b => {
-                    const x = b.start * state.zoom;
-                    const bw = b.dur * state.zoom;
-                    
-                    // Colors
-                    if(b.type === 'shake') c.fillStyle = 'rgba(255, 50, 50, 0.5)';
-                    else if(b.type === 'flash') c.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                    else c.fillStyle = 'rgba(50, 150, 255, 0.5)';
-                    
-                    // Selected highlight
-                    if(state.selBlock === b) {
-                        c.strokeStyle = '#fff'; c.lineWidth = 2;
-                        c.strokeRect(x, 10, bw, h-20);
-                    }
-                    
-                    c.fillRect(x, 10, bw, h-20);
-                    c.fillStyle = '#fff'; c.fillText(b.type, x+2, 22);
-                });
-                
-                // C. Playhead
+                // Playhead (Lazy Draw)
+                redrawTimelineLayer(); 
                 const px = t * state.zoom;
-                c.fillStyle = 'red'; c.fillRect(px, 0, 2, h);
+                ctx.tl.fillStyle = '#ff0033'; ctx.tl.fillRect(px, 0, 2, cvs.tl.height);
                 
-                // Auto Scroll
                 if(state.play) {
-                    const scroll = document.getElementById('timeline-scroll');
-                    if(px > scroll.scrollLeft + scroll.clientWidth - 50) scroll.scrollLeft = px - 100;
+                    const scr = document.getElementById('timeline-scroll');
+                    if(px > scr.scrollLeft + scr.clientWidth - 50) scr.scrollLeft = px - 100;
                 }
             }
 
-            // 3. Render Visualizer (Same as before)
-            if(state.play) {
-                // ... (Visualizer code omitted for brevity in this specific artifact to focus on tools, 
-                // but functionally it's the same circle visualizer)
-                // Re-implementing basic shake for demo:
+            // Visualizer (Simple)
+            if(state.play || state.isRendering) {
                 let shake = 0;
+                let flash = 0;
+                let invert = 0;
                 state.blocks.forEach(b => {
-                    if(t >= b.start && t < b.start + b.dur) shake += (b.str/100);
+                    if(t >= b.start && t < b.start + b.dur) {
+                        if(b.type==='shake') shake += (b.str/100);
+                        if(b.type==='flash') flash += (b.str/100);
+                    }
                 });
-                
+
                 const c = ctx.vis;
-                c.clearRect(0,0,cvs.vis.width,cvs.vis.height);
-                if(shake > 0) {
-                    const s = shake * 20;
-                    c.save();
+                const w = cvs.vis.width; const h = cvs.vis.height;
+                
+                c.fillStyle = `rgba(0,0,0,${0.2})`; // Trails
+                c.fillRect(0,0,w,h);
+                
+                c.save();
+                if(shake>0) {
+                    const s = shake*30;
                     c.translate((Math.random()-0.5)*s, (Math.random()-0.5)*s);
-                    c.fillStyle = 'white'; c.beginPath(); c.arc(cvs.vis.width/2, cvs.vis.height/2, 100, 0, 6.28); c.fill();
-                    c.restore();
+                }
+                
+                // Draw circle vis
+                let freq = new Uint8Array(state.anal.frequencyBinCount);
+                state.anal.getByteFrequencyData(freq);
+                
+                c.beginPath();
+                const rad = 150;
+                for(let i=0; i<100; i++) {
+                    const v = freq[i*3]/255;
+                    const ang = (i/100)*Math.PI*2;
+                    const len = v * 200;
+                    c.moveTo(Math.cos(ang)*rad, Math.sin(ang)*rad);
+                    c.lineTo(Math.cos(ang)*(rad+len), Math.sin(ang)*(rad+len));
+                }
+                c.strokeStyle = '#ff0033'; c.lineWidth=3; c.stroke();
+                c.restore();
+
+                // FX
+                const fc = ctx.fx;
+                fc.clearRect(0,0,w,h);
+                if(flash>0) {
+                    fc.fillStyle = `rgba(255,255,255,${flash})`;
+                    fc.fillRect(0,0,w,h);
                 }
             }
         }
 
-        // --- HELPERS ---
-        function togglePlay() {
-            if(state.play) {
-                state.src.stop(); state.play = false;
-                state.pause = state.ctx.currentTime - state.start;
-                document.getElementById('btn-play').innerText = "▶ PLAY";
-            } else {
-                state.src = state.ctx.createBufferSource();
-                state.src.buffer = state.buf;
-                state.src.connect(state.ctx.destination);
-                state.start = state.ctx.currentTime - state.pause;
-                state.src.start(0, state.pause);
-                state.play = true;
-                document.getElementById('btn-play').innerText = "⏸ STOP";
-            }
-        }
-        
         window.openEditor = (b, x, y) => {
             const el = document.getElementById('block-editor');
             el.style.display = 'block';
             el.style.left = Math.min(window.innerWidth-220, x)+'px';
             el.style.top = Math.min(window.innerHeight-200, y-100)+'px';
             document.getElementById('ed-str').value = b.str;
-            document.getElementById('ed-ease').value = b.ease;
         };
-        window.closeEditor = () => document.getElementById('block-editor').style.display = 'none';
-        window.updateBlock = (k, v) => { if(state.selBlock) state.selBlock[k] = v; redrawTimelineLayer(); };
+        window.closeEditor = () => document.getElementById('block-editor').style.display='none';
+        window.updateBlock = (k, v) => { if(state.selBlock) state.selBlock[k]=v; redrawTimelineLayer(); };
 
         init();
     </script>
