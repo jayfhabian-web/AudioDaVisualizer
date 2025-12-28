@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V30 - VFX Rack</title>
+    <title>Phonk V31 - Director's Cut</title>
     <style>
         /* --- THEME --- */
         :root {
@@ -17,11 +17,15 @@
 
         body { margin: 0; background: var(--bg); font-family: 'Segoe UI', monospace; overflow: hidden; color: var(--text); }
         
-        /* LAYERS */
-        #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: exclusion; background:white; }
-        #vhs-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 8; opacity: 0; background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAABZJREFUeNpi2r9//38gYGAEESAAEGAAasgJOgzOKCoAAAAASUVORK5CYII='); background-size: 4px 4px; }
-        #canvas-layer { position: absolute; top: 0; left: 0; z-index: 1; }
-        
+        /* --- STAGE LAYERS --- */
+        #stage-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #000;
+            filter: contrast(100%) saturate(100%) grayscale(0%) sepia(0%); /* Dynamic Filters */
+            transition: filter 0.05s; /* Fast transition for Fried effect */
+        }
+
+        /* 1. Background Image/Logo */
         #logo-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 320px; height: 320px; z-index: 5; border-radius: 50%; 
@@ -31,11 +35,32 @@
             transition: border-color 0.1s;
         }
 
-        /* UI PANEL */
+        /* 2. Visualizer Canvas */
+        #canvas-layer { position: absolute; top: 0; left: 0; z-index: 6; }
+
+        /* 3. Flash Layer */
+        #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: exclusion; background:white; }
+
+        /* 4. VFX LAYERS */
+        /* The "Comic" Halftone Effect */
+        #comic-layer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; opacity: 0; 
+            background-image: radial-gradient(#000 15%, transparent 16%), radial-gradient(#000 15%, transparent 16%);
+            background-size: 4px 4px; background-position: 0 0, 2px 2px;
+        }
+
+        /* The True VHS Scanlines */
+        #vhs-scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 16; opacity: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+        }
+
+        /* --- UI PANEL --- */
         #ui-panel {
             position: absolute; top: 0; left: 0; width: 440px; height: 100vh;
             background: var(--panel); border-right: 1px solid var(--border);
-            padding: 15px; z-index: 20; overflow-y: auto;
+            padding: 15px; z-index: 50; overflow-y: auto;
             transition: transform 0.2s ease;
         }
         #ui-panel.hidden { transform: translateX(-100%); }
@@ -65,7 +90,7 @@
         .react-btn { width: 100%; padding: 10px; background: #111; border: 1px solid #333; color: #555; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 10px; margin-bottom: 5px; }
         .react-btn.active { background: var(--react-active); color: #000; border: none; }
 
-        /* STANDARD UI */
+        /* UI ELEMENTS */
         h2 { font-size: 14px; color: #fff; margin: 0 0 15px 0; border-left: 3px solid var(--accent); padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 10px; color: #666; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
 
@@ -84,7 +109,7 @@
         .link-btn { width: 40px; font-size: 8px; background: #111; color: #444; border: 1px solid #333; cursor: pointer; height: 20px; text-transform: uppercase; }
         .link-btn.linked { background: var(--react-active); color: #000; border-color: var(--react-active); font-weight: bold; }
 
-        /* MAIN DASHBOARD GRID */
+        /* MAIN GRID */
         .sculptor-grid { display: flex; gap: 6px; height: 200px; background: #050505; border: 1px solid #333; padding: 6px; margin-bottom: 10px; }
         .sculpt-col { flex: 1; display: flex; flex-direction: column; border: 1px solid #222; background: #111; position: relative; }
         .graph-area { flex: 1; position: relative; width: 100%; overflow: hidden; background: rgba(0,0,0,0.5); border-bottom: 1px solid #333; cursor: row-resize; }
@@ -100,11 +125,33 @@
         .react-indicator { width: 6px; height: 6px; background: var(--react-active); border-radius: 50%; box-shadow: 0 0 5px var(--react-active); display: none; margin-bottom: 2px; }
         .react-indicator.active { display: block; }
         .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; background: #0f0f0f; padding: 8px; border-radius: 4px; border: 1px solid #222; }
-        #toggle-ui { position: absolute; top: 15px; left: 460px; z-index: 25; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
+        #toggle-ui { position: absolute; top: 15px; left: 460px; z-index: 55; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
         #ui-panel.hidden + #toggle-ui { left: 15px; }
+
+        /* Animation for True VHS */
+        @keyframes vhs-twitch {
+            0% { transform: translateX(0); }
+            5% { transform: translateX(2px); }
+            10% { transform: translateX(-2px); }
+            15% { transform: translateX(0); }
+            100% { transform: translateX(0); }
+        }
+        .vhs-active #stage-container {
+            animation: vhs-twitch 3s infinite;
+        }
     </style>
 </head>
-<body>
+<body class="">
+
+    <div id="stage-container">
+        <div id="logo-container"></div>
+        
+        <canvas id="canvas-layer"></canvas>
+        
+        <div id="comic-layer"></div>
+        <div id="vhs-scanlines"></div>
+        <div id="flash-layer"></div>
+    </div>
 
     <div id="loader" class="overlay">
         <div style="font-size: 20px; color: var(--accent); font-weight: bold;">ANALYZING TRACK</div>
@@ -131,14 +178,10 @@
         </div>
     </div>
 
-    <div id="vhs-layer"></div>
-    <div id="flash-layer"></div>
-    <canvas id="canvas-layer"></canvas>
-    <div id="logo-container"></div>
     <button id="toggle-ui" onclick="toggleUI()">OPEN ENGINE</button>
 
     <div id="ui-panel" id="panel">
-        <h2>Phonk V30 <span style="font-size:9px; opacity:0.5">VFX RACK</span></h2>
+        <h2>Phonk V31 <span style="font-size:9px; opacity:0.5">DIRECTOR'S CUT</span></h2>
 
         <div class="control-group">
             <label>Track</label>
@@ -191,9 +234,16 @@
             <input type="range" id="pre-amp" min="0.5" max="3.0" step="0.1" value="1.0">
         </div>
 
-        <h3>2. VFX Rack (New)</h3>
-        <p style="font-size:9px; color:#555;">Click "Link" to bind effect to current selected bar.</p>
+        <h3>2. VFX Rack</h3>
         
+        <div class="vfx-row">
+            <div class="vfx-name" style="color:var(--accent)">Deep Fry</div>
+            <div class="vfx-controls">
+                <input type="range" class="vfx-slider" id="amt-fry" min="0" max="1" step="0.1" value="0.0">
+                <button class="link-btn" id="link-fry" onclick="linkVfx('fry')">Link</button>
+            </div>
+        </div>
+
         <div class="vfx-row">
             <div class="vfx-name">RGB Split</div>
             <div class="vfx-controls">
@@ -203,31 +253,43 @@
         </div>
 
         <div class="vfx-row">
-            <div class="vfx-name">Invert Flash</div>
+            <div class="vfx-name">Comic Dot</div>
             <div class="vfx-controls">
-                <input type="range" class="vfx-slider" id="amt-invert" min="0" max="1" step="0.1" value="0">
-                <button class="link-btn" id="link-invert" onclick="linkVfx('invert')">Link</button>
+                <input type="range" class="vfx-slider" id="amt-comic" min="0" max="1" step="0.1" value="0.3">
+                <button class="link-btn" id="link-comic" onclick="linkVfx('comic')">Link</button>
             </div>
         </div>
 
         <div class="vfx-row">
-            <div class="vfx-name">VHS Noise</div>
+            <div class="vfx-name">True VHS</div>
             <div class="vfx-controls">
-                <input type="range" class="vfx-slider" id="amt-vhs" min="0" max="1" step="0.1" value="0.3">
+                <input type="range" class="vfx-slider" id="amt-vhs" min="0" max="1" step="0.1" value="0.0">
                 <button class="link-btn" id="link-vhs" onclick="linkVfx('vhs')">Link</button>
             </div>
         </div>
 
         <div class="vfx-row">
-            <div class="vfx-name">Mirror Kaleido</div>
+            <div class="vfx-name">Mirror</div>
             <div class="vfx-controls">
                 <input type="range" class="vfx-slider" id="amt-mirror" min="0" max="1" step="0.1" value="0">
                 <button class="link-btn" id="link-mirror" onclick="linkVfx('mirror')">Link</button>
             </div>
         </div>
 
+        <h3>3. Color Filters</h3>
+        <div class="control-group">
+            <label>Color Grade Style</label>
+            <select id="color-filter-select" onchange="updateColorFilter()">
+                <option value="none">Standard (None)</option>
+                <option value="sepia">Sepia (Western)</option>
+                <option value="grayscale">Noir (B&W)</option>
+                <option value="invert">Thermal (Invert)</option>
+                <option value="huerotate">Cyber (Hue Shift)</option>
+            </select>
+        </div>
 
-        <h3>3. Geometry</h3>
+
+        <h3>4. Geometry</h3>
         <div class="control-group"><label>Shape</label><select id="shape-select"><option value="square">Square</option><option value="triangle">Triangle</option><option value="round">Round</option></select></div>
         <div class="control-group"><label>Radius</label><input type="range" id="radius" min="100" max="350" value="170"></div>
         <div class="checkbox-row"><input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()"><span style="font-size:10px;">Auto-Match Colors</span></div>
@@ -244,9 +306,15 @@
             ctx: document.getElementById('canvas-layer').getContext('2d'),
             logo: document.getElementById('logo-container'),
             flash: document.getElementById('flash-layer'),
-            vhs: document.getElementById('vhs-layer'),
+            stage: document.getElementById('stage-container'),
+            
+            // Overlays
+            comic: document.getElementById('comic-layer'),
+            vhs: document.getElementById('vhs-scanlines'),
+            
             panel: document.getElementById('ui-panel'),
             loader: document.getElementById('loader'),
+            
             // Tweak DOM
             tweakModal: document.getElementById('tweak-modal'),
             tweakBar: document.getElementById('tweak-bar'),
@@ -254,19 +322,25 @@
             tweakReactBtn: document.getElementById('tweak-react-btn'),
             inputs: { attack: document.getElementById('input-attack'), decay: document.getElementById('input-decay'), gate: document.getElementById('input-gate') },
             labels: { attack: document.getElementById('val-attack'), decay: document.getElementById('val-decay'), gate: document.getElementById('val-gate') },
+            
             // VFX DOM
             vfxInputs: {
+                fry: document.getElementById('amt-fry'),
                 rgb: document.getElementById('amt-rgb'),
-                invert: document.getElementById('amt-invert'),
+                comic: document.getElementById('amt-comic'),
                 vhs: document.getElementById('amt-vhs'),
                 mirror: document.getElementById('amt-mirror')
             },
             vfxLinks: {
+                fry: document.getElementById('link-fry'),
                 rgb: document.getElementById('link-rgb'),
-                invert: document.getElementById('link-invert'),
+                comic: document.getElementById('link-comic'),
                 vhs: document.getElementById('link-vhs'),
                 mirror: document.getElementById('link-mirror')
             },
+            // Filters
+            filterSelect: document.getElementById('color-filter-select'),
+            
             // Main DOM
             bars: [0,1,2,3].map(i => document.getElementById(`bar-${i}`)),
             lines: [0,1,2,3].map(i => document.getElementById(`line-${i}`)),
@@ -286,7 +360,7 @@
             physics: 0,
             thresholds: [0.8, 0.6, 0.65, 0.85],
             extracted: { bass: '#ff0033', idle: '#ffffff' },
-            reactIndex: -1, // Master Physics Link
+            reactIndex: -1, 
             bandDSP: [
                 { val: 0, attack: 0, decay: 0.15, gate: 0.05 },
                 { val: 0, attack: 0, decay: 0.15, gate: 0.05 },
@@ -294,41 +368,44 @@
                 { val: 0, attack: 0, decay: 0.15, gate: 0.05 }
             ],
             // VFX Link Map: key=effectName, value=barIndex (-1 is Global/All)
-            vfxLinks: { rgb: -1, invert: -1, vhs: -1, mirror: -1 },
-            currentTweakIndex: -1 // Last clicked tweak button
+            vfxLinks: { fry: -1, rgb: -1, comic: -1, vhs: -1, mirror: -1 },
+            currentTweakIndex: -1
         };
 
         // --- VFX LINKING ---
         window.linkVfx = (effectName) => {
-            // If we have a bar selected in Tweak mode (or last opened), link it.
-            // If currentTweakIndex is -1, we toggle between "Global" (-1) and "Off" (which we don't really have, so just Global)
-            // Actually, let's just use the logic: If a Tweak window was opened last, link to that ID.
-            
-            if (state.currentTweakIndex === -1) {
-                alert("Please click 'Tweak' on a frequency bar first to select it.");
-                return;
-            }
-            
-            // If already linked to this bar, unlink (set to -1/Global)
-            if (state.vfxLinks[effectName] === state.currentTweakIndex) {
-                state.vfxLinks[effectName] = -1;
-            } else {
-                state.vfxLinks[effectName] = state.currentTweakIndex;
-            }
+            if (state.currentTweakIndex === -1) { alert("Please click 'Tweak' on a frequency bar first to select it."); return; }
+            if (state.vfxLinks[effectName] === state.currentTweakIndex) state.vfxLinks[effectName] = -1;
+            else state.vfxLinks[effectName] = state.currentTweakIndex;
             updateVfxButtons();
         };
 
         function updateVfxButtons() {
             for (const [key, btn] of Object.entries(dom.vfxLinks)) {
                 const linkedIdx = state.vfxLinks[key];
-                if (linkedIdx !== -1) {
-                    btn.classList.add('linked');
-                    btn.innerText = `LINKED ${linkedIdx*20+20}Hz`;
-                } else {
-                    btn.classList.remove('linked');
-                    btn.innerText = "Global";
-                }
+                if (linkedIdx !== -1) { btn.classList.add('linked'); btn.innerText = `LINKED ${linkedIdx*20+20}Hz`; } 
+                else { btn.classList.remove('linked'); btn.innerText = "Global"; }
             }
+        }
+
+        // --- FILTER LOGIC ---
+        // Helper to construct the filter string dynamically
+        function getFilterString(baseFilter, fryAmount) {
+            let s = '';
+            // Apply Base Filter
+            switch(baseFilter) {
+                case 'sepia': s += 'sepia(100%) '; break;
+                case 'grayscale': s += 'grayscale(100%) '; break;
+                case 'invert': s += 'invert(100%) '; break;
+                case 'huerotate': s += 'hue-rotate(90deg) '; break;
+            }
+            // Apply Fry (Add contrast and saturation)
+            if (fryAmount > 0) {
+                s += `contrast(${100 + (fryAmount * 200)}%) saturate(${100 + (fryAmount * 300)}%)`;
+            } else {
+                s += 'contrast(100%) saturate(100%)';
+            }
+            return s;
         }
 
         // --- TWEAK & UI LOGIC ---
@@ -336,18 +413,11 @@
             state.currentTweakIndex = idx;
             document.getElementById('tweak-band-id').innerText = (idx * 20 + 20) + "Hz";
             dom.tweakThresh.style.bottom = (state.thresholds[idx] * 100) + "%";
-            
             const dsp = state.bandDSP[idx];
-            dom.inputs.attack.value = dsp.attack;
-            dom.inputs.decay.value = dsp.decay;
-            dom.inputs.gate.value = dsp.gate;
-            
-            updateKnobs();
-            updateReactUI();
-            dom.tweakModal.classList.add('active');
+            dom.inputs.attack.value = dsp.attack; dom.inputs.decay.value = dsp.decay; dom.inputs.gate.value = dsp.gate;
+            updateKnobs(); updateReactUI(); dom.tweakModal.classList.add('active');
         };
-
-        window.closeTweak = () => { dom.tweakModal.classList.remove('active'); }; // Don't reset index so we can link VFX
+        window.closeTweak = () => { dom.tweakModal.classList.remove('active'); };
         window.updateKnobs = () => {
             if(state.currentTweakIndex === -1) return;
             const idx = state.currentTweakIndex;
@@ -368,12 +438,10 @@
             else { dom.tweakReactBtn.classList.remove('active'); dom.tweakReactBtn.innerText = "LINK MASTER PHYSICS"; }
         }
         function updateGridIndicators() {
-            dom.inds.forEach((ind, i) => {
-                if(i === state.reactIndex) ind.classList.add('active'); else ind.classList.remove('active');
-            });
+            dom.inds.forEach((ind, i) => { if(i === state.reactIndex) ind.classList.add('active'); else ind.classList.remove('active'); });
         }
-
-        // --- DRAG LOGIC ---
+        
+        // --- DRAG ---
         let dragTarget = -1; let dragMode = '';
         window.startDrag = (index, e, mode) => {
             if(mode === 'tweak' && state.currentTweakIndex !== -1) dragTarget = state.currentTweakIndex; else dragTarget = index;
@@ -392,7 +460,7 @@
             if(state.currentTweakIndex === dragTarget) dom.tweakThresh.style.bottom = (y * 100) + "%";
         }
 
-        // --- AUDIO ENGINE ---
+        // --- AUDIO ---
         let audioCtx, source, analyser, audioBuffer;
         document.getElementById('file-in').addEventListener('change', async (e) => {
             const file = e.target.files[0]; if(!file) return;
@@ -402,7 +470,6 @@
             try { audioBuffer = await audioCtx.decodeAudioData(arrayBuffer); analyzeTrack(audioBuffer); } 
             catch (err) { console.error(err); dom.loader.classList.remove('active'); }
         });
-
         function analyzeTrack(buffer) {
             const raw = buffer.getChannelData(0); let sum = 0;
             for (let i=0; i<raw.length; i+=10000) sum += Math.abs(raw[i]);
@@ -410,7 +477,6 @@
             if (source) source.disconnect();
             dom.loader.classList.remove('active'); dom.playBtn.disabled = false; dom.playBtn.innerText = "PLAY TRACK";
         }
-
         window.togglePlay = () => {
             if(!audioBuffer) return;
             if(state.isPlaying) { if(source) source.stop(); state.isPlaying = false; dom.playBtn.innerText = "PLAY TRACK"; } 
@@ -433,24 +499,19 @@
             const rawBands = [data[1], data[2], data[3], data[4]];
             
             let totalPhysics = 0;
-
-            // Values for FX triggering
             let vfxTriggers = [0, 0, 0, 0]; 
 
             rawBands.forEach((rawVal, i) => {
                 let input = (rawVal / 255) * masterPre * parseFloat(dom.gains[i].value);
                 const dsp = state.bandDSP[i];
                 if(input < dsp.gate) input = 0;
-                
                 let current = dsp.val;
                 if (input > current) current += (input - current) * (1.0 - dsp.attack);
                 else current -= dsp.decay;
                 if(current < 0) current = 0;
-                
                 state.bandDSP[i].val = current;
                 let processedVal = Math.min(current, 1);
 
-                // UI
                 dom.bars[i].style.height = (processedVal * 100) + "%";
                 dom.bars[i].style.backgroundColor = (processedVal > state.thresholds[i]) ? dom.colBass.value : '#444';
                 if(state.currentTweakIndex === i) {
@@ -458,21 +519,14 @@
                     dom.tweakBar.style.backgroundColor = (processedVal > state.thresholds[i]) ? '#fff' : dom.colBass.value;
                 }
 
-                // PHYSICS & VFX TRIGGER
                 const thresh = state.thresholds[i];
                 let force = 0;
                 if (processedVal > thresh) force = (processedVal - thresh);
-                
-                vfxTriggers[i] = force; // Store force for VFX Logic
-
-                if (state.reactIndex !== -1) {
-                    if (state.reactIndex === i) totalPhysics = force * 3.0;
-                } else {
-                    totalPhysics += force;
-                }
+                vfxTriggers[i] = force; 
+                if (state.reactIndex !== -1) { if (state.reactIndex === i) totalPhysics = force * 3.0; } 
+                else { totalPhysics += force; }
             });
 
-            // Physics Smoothing
             if (totalPhysics > state.physics) state.physics = totalPhysics; else state.physics *= 0.82;
             state.physics = Math.min(Math.max(state.physics, 0), 2.5);
 
@@ -489,13 +543,12 @@
             const shape = dom.shapeSelect.value;
             const pre = parseFloat(dom.preAmp.value);
 
-            // RGB SPLIT FX
+            // RGB FX
             let rgbOffset = 0;
             const rgbLink = state.vfxLinks.rgb;
             const rgbAmt = parseFloat(dom.vfxInputs.rgb.value);
             if(rgbAmt > 0) {
-                 // Check if triggered globally or by specific bar
-                 let trigger = (rgbLink === -1) ? phys : state.bandDSP[rgbLink].val > state.thresholds[rgbLink] ? (state.bandDSP[rgbLink].val - state.thresholds[rgbLink]) * 2 : 0;
+                 let trigger = (rgbLink === -1) ? phys : (state.bandDSP[rgbLink].val > state.thresholds[rgbLink] ? (state.bandDSP[rgbLink].val - state.thresholds[rgbLink]) * 2 : 0);
                  rgbOffset = trigger * (rgbAmt * 20);
             }
 
@@ -504,7 +557,7 @@
             const mirrorLink = state.vfxLinks.mirror;
             const mirrorAmt = parseFloat(dom.vfxInputs.mirror.value);
             if(mirrorAmt > 0) {
-                let trigger = (mirrorLink === -1) ? phys : state.bandDSP[mirrorLink].val > state.thresholds[mirrorLink] ? 1 : 0;
+                let trigger = (mirrorLink === -1) ? phys : (state.bandDSP[mirrorLink].val > state.thresholds[mirrorLink] ? 1 : 0);
                 if(trigger > 0.1) mirrorMode = true;
             }
 
@@ -512,25 +565,15 @@
             const cBass = hexToRgb(dom.colBass.value);
             let flashMix = Math.min(phys, 1);
             
-            // DRAW LOOP (Run twice for RGB effect if needed, but for performance, we just offset draws)
-            // Simplified RGB: We just draw once, but shift context? No, for true RGB split we need composite operations.
-            // Let's do a simple "Shake RGB" simulation:
-            
             ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
 
-            // MIRROR transform
             ctx.save();
-            if(mirrorMode) {
-                ctx.translate(cx, cy);
-                ctx.scale(1, -1); // Flip Y
-                ctx.translate(-cx, -cy);
-            }
+            if(mirrorMode) { ctx.translate(cx, cy); ctx.scale(1, -1); ctx.translate(-cx, -cy); }
 
             const rad = baseRad + (phys * 30); 
             const totalBars = 60;
             const angleStep = Math.PI / totalBars; 
 
-            // Standard Draw
             for(let i = 0; i < totalBars; i++) {
                 let index = 2 + i * 2;
                 let val = (data[index] / 255) * pre; if(val > 1) val = 1;
@@ -538,23 +581,16 @@
                 if (state.reactIndex !== -1) h = h * (0.3 + (phys * 0.7));
                 if(h < 4) h = 4;
 
-                // COLOR LOGIC
                 ctx.fillStyle = `rgb(${cIdle.r + (cBass.r - cIdle.r) * flashMix},${cIdle.g + (cBass.g - cIdle.g) * flashMix},${cIdle.b + (cBass.b - cIdle.b) * flashMix})`;
                 
-                // RGB DRAW (Cyan)
                 if(rgbOffset > 1) {
                     ctx.fillStyle = "rgba(0,255,255,0.8)";
                     drawBar(ctx, cx - rgbOffset, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
                     drawBar(ctx, cx - rgbOffset, cy, rad, w, h, -(i * angleStep) - (Math.PI/2), shape);
-                }
-                
-                // RGB DRAW (Red)
-                if(rgbOffset > 1) {
                     ctx.fillStyle = "rgba(255,0,0,0.8)";
                     drawBar(ctx, cx + rgbOffset, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
                     drawBar(ctx, cx + rgbOffset, cy, rad, w, h, -(i * angleStep) - (Math.PI/2), shape);
                 } else {
-                    // Normal Draw
                     drawBar(ctx, cx, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
                     drawBar(ctx, cx, cy, rad, w, h, -(i * angleStep) - (Math.PI/2), shape);
                 }
@@ -580,29 +616,35 @@
             dom.logo.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${1 + globalPhys*0.1})`;
             dom.logo.style.borderColor = `rgba(255,255,255,${0.05 + globalPhys})`;
 
-            // INVERT FX
-            const invLink = state.vfxLinks.invert;
-            const invAmt = parseFloat(dom.vfxInputs.invert.value);
-            let invTrigger = (invLink === -1) ? globalPhys : (triggers[invLink] || 0);
-            
-            if (invAmt > 0 && invTrigger > 0.2) {
-                dom.flash.style.opacity = invTrigger * invAmt;
-                dom.flash.style.mixBlendMode = 'exclusion'; // Invert effect
-            } else {
-                dom.flash.style.opacity = 0;
-            }
+            // COMIC (Halftone)
+            const comicLink = state.vfxLinks.comic;
+            const comicAmt = parseFloat(dom.vfxInputs.comic.value);
+            let comicTrigger = (comicLink === -1) ? globalPhys : (triggers[comicLink] || 0);
+            dom.comic.style.opacity = (comicTrigger > 0.1) ? Math.min(comicTrigger * comicAmt + 0.2, 0.8) : 0;
 
-            // VHS FX
+            // TRUE VHS
             const vhsLink = state.vfxLinks.vhs;
             const vhsAmt = parseFloat(dom.vfxInputs.vhs.value);
             let vhsTrigger = (vhsLink === -1) ? globalPhys : (triggers[vhsLink] || 0);
             
             if (vhsAmt > 0) {
-                dom.vhs.style.opacity = (0.2 + (vhsTrigger * vhsAmt)); // Always slightly visible, spikes on beat
-                dom.vhs.style.filter = `contrast(${1 + vhsTrigger}) brightness(${1 + vhsTrigger*0.5})`;
+                dom.vhs.style.opacity = 0.3 + (vhsTrigger * vhsAmt); 
+                if (vhsTrigger > 0.1) document.body.classList.add('vhs-active');
+                else document.body.classList.remove('vhs-active');
             } else {
                 dom.vhs.style.opacity = 0;
+                document.body.classList.remove('vhs-active');
             }
+
+            // FRY (High Contrast/Sat)
+            const fryLink = state.vfxLinks.fry;
+            const fryAmt = parseFloat(dom.vfxInputs.fry.value);
+            let fryTrigger = (fryLink === -1) ? globalPhys : (triggers[fryLink] || 0);
+            let finalFry = (fryTrigger * fryAmt);
+
+            // Apply Filters (Global + Fry)
+            const baseFilter = dom.filterSelect.value;
+            dom.stage.style.filter = getFilterString(baseFilter, finalFry);
         }
 
         function hexToRgb(hex) { const bigint = parseInt(hex.replace('#',''), 16); return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }; }
