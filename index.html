@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk V27 - The Analyst</title>
+    <title>Phonk V28 - Tweak Bench</title>
     <style>
         /* --- THEME --- */
         :root {
@@ -11,7 +11,7 @@
             --border: rgba(255, 255, 255, 0.15);
             --text: #ccc;
             --accent: #ff0033;
-            --clip: #fff;
+            --react-active: #00ff88;
         }
         * { box-sizing: border-box; user-select: none; }
 
@@ -20,7 +20,6 @@
         #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: screen; }
         #canvas-layer { position: absolute; top: 0; left: 0; z-index: 1; }
         
-        /* LOGO / CENTER */
         #logo-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 320px; height: 320px; z-index: 5; border-radius: 50%; 
@@ -39,198 +38,155 @@
         }
         #ui-panel.hidden { transform: translateX(-100%); }
 
-        /* LOADING OVERLAY */
-        #loader {
+        /* LOADING & MODAL OVERLAYS */
+        .overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 100; display: none;
+            background: rgba(0,0,0,0.9); z-index: 100; display: none;
             flex-direction: column; justify-content: center; align-items: center;
         }
-        #loader.active { display: flex; }
-        .loader-text { font-size: 20px; color: var(--accent); font-weight: bold; letter-spacing: 3px; margin-bottom: 10px; }
-        .loader-sub { font-size: 12px; color: #fff; opacity: 0.7; }
+        .overlay.active { display: flex; }
+        
+        /* TWEAK MODAL SPECIFIC */
+        #tweak-modal { z-index: 200; background: rgba(10,10,10,0.95); backdrop-filter: blur(10px); }
+        .tweak-container { width: 80%; max-width: 500px; border: 1px solid #333; padding: 20px; background: #000; border-radius: 8px; position: relative; }
+        .close-btn { position: absolute; top: 10px; right: 10px; color: #555; cursor: pointer; font-size: 20px; font-weight: bold; }
+        
+        /* BIG GRAPH IN TWEAK MODE */
+        #tweak-graph { width: 100%; height: 200px; background: #111; border: 1px solid #333; position: relative; margin-bottom: 20px; overflow: hidden;}
+        #tweak-bar { width: 100%; height: 0%; background: var(--accent); position: absolute; bottom: 0; left: 0; transition: height 0.05s; }
+        #tweak-thresh { width: 100%; height: 2px; background: #fff; position: absolute; bottom: 80%; left: 0; cursor: ns-resize; box-shadow: 0 0 10px #fff; }
 
+        .shape-btn-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .shape-btn { flex: 1; padding: 10px; background: #111; border: 1px solid #333; color: #666; cursor: pointer; text-align: center; font-size: 10px; text-transform: uppercase; font-weight: bold; }
+        .shape-btn.active { border-color: #fff; color: #fff; background: #222; }
+
+        .react-btn { width: 100%; padding: 15px; background: #111; border: 1px solid #333; color: #555; font-weight: bold; letter-spacing: 2px; cursor: pointer; transition: all 0.2s; }
+        .react-btn.active { background: var(--react-active); color: #000; box-shadow: 0 0 20px var(--react-active); border: none; }
+
+        /* STANDARD UI */
         h2 { font-size: 14px; color: #fff; margin: 0 0 15px 0; border-left: 3px solid var(--accent); padding-left: 10px; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 10px; color: #666; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: 700; text-transform: uppercase; }
 
         .control-group { margin-bottom: 12px; }
         label { display: flex; justify-content: space-between; font-size: 9px; color: #888; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
-
         input[type="range"] { width: 100%; height: 4px; background: #222; border-radius: 2px; appearance: none; cursor: pointer; }
         input[type="range"]::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background: #fff; border-radius: 50%; }
         input[type="file"] { width: 100%; background: #111; border: 1px solid #222; color: #666; padding: 6px; border-radius: 4px; font-size: 9px; }
         select { width: 100%; background: #111; border: 1px solid #222; color: #ccc; padding: 6px; font-size: 10px; text-transform: uppercase; }
 
-        /* --- THE SCULPTOR GRID --- */
-        .sculptor-grid {
-            display: flex; gap: 6px; height: 200px; background: #050505; 
-            border: 1px solid #333; padding: 6px; margin-bottom: 10px;
-        }
-        .sculpt-col { 
-            flex: 1; display: flex; flex-direction: column; 
-            border: 1px solid #222; background: #111; position: relative;
-        }
-        
-        .graph-area {
-            flex: 1; position: relative; width: 100%; overflow: hidden; cursor: row-resize;
-            background: rgba(0,0,0,0.5); border-bottom: 1px solid #333;
-        }
-        .audio-bar { 
-            position: absolute; bottom: 0; left: 0; width: 100%; 
-            height: 0%; background: #444; opacity: 0.7; transition: height 0.05s;
-        }
-        /* Clipping Animation */
-        .audio-bar.clipping { background: #fff !important; box-shadow: 0 0 10px #fff; }
-        .audio-bar.active { opacity: 1; box-shadow: 0 0 15px currentColor; }
-        
-        .thresh-line {
-            position: absolute; left: 0; width: 100%; height: 2px; 
-            background: #fff; z-index: 10; box-shadow: 0 1px 2px black; pointer-events: none;
-        }
+        .sculptor-grid { display: flex; gap: 6px; height: 140px; background: #050505; border: 1px solid #333; padding: 6px; margin-bottom: 10px; }
+        .sculpt-col { flex: 1; display: flex; flex-direction: column; border: 1px solid #222; background: #111; position: relative; }
+        .graph-area { flex: 1; position: relative; width: 100%; overflow: hidden; background: rgba(0,0,0,0.5); border-bottom: 1px solid #333; }
+        .audio-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: #444; opacity: 0.7; transition: height 0.05s; }
+        .thresh-line { position: absolute; left: 0; width: 100%; height: 2px; background: #fff; pointer-events: none; opacity: 0.5; }
 
-        /* Controls under bar */
-        .col-controls {
-            height: 90px; padding: 4px; display: flex; flex-direction: column; gap: 4px;
-            background: #080808; align-items: center;
-        }
-        .freq-label { font-size: 8px; text-align: center; color: #555; font-weight: bold;}
-        
-        .prio-btn {
-            width: 100%; border: 1px solid #333; background: #111; color: #555;
-            font-size: 9px; padding: 2px; cursor: pointer; text-transform: uppercase;
-            border-radius: 2px; font-weight: bold; transition: all 0.2s; height: 18px;
-        }
-        .prio-btn:hover { background: #222; color: #fff; }
-        .prio-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 5px var(--accent); }
+        /* Small Controls */
+        .col-controls { height: 30px; display: flex; align-items: center; justify-content: center; background: #080808; }
+        .tweak-trigger-btn { background: none; border: 1px solid #333; color: #666; font-size: 10px; padding: 2px 8px; cursor: pointer; border-radius: 4px; }
+        .tweak-trigger-btn:hover { color: #fff; border-color: #fff; }
+        .react-indicator { width: 6px; height: 6px; background: var(--react-active); border-radius: 50%; margin-left: 5px; box-shadow: 0 0 5px var(--react-active); display: none; }
+        .react-indicator.active { display: block; }
 
-        /* GAIN SLIDER (Vertical) */
-        .gain-wrapper {
-            flex: 1; width: 100%; display: flex; justify-content: center; align-items: center;
-            background: #0e0e0e; border-radius: 2px; margin-top: 2px; position: relative;
-        }
-        .gain-label { position: absolute; top: 2px; left: 2px; font-size: 7px; color: #444; pointer-events: none;}
-        input[type=range].v-slider {
-            -webkit-appearance: none; width: 40px; height: 4px;
-            transform: rotate(-90deg); background: #333; cursor: pointer;
-        }
-
-        /* Visual Settings */
-        .color-row { display: flex; gap: 5px; margin-bottom: 10px; }
-        .color-box { flex: 1; background: #111; padding: 5px; border: 1px solid #222; border-radius: 4px; }
-        input[type="color"] { width: 100%; height: 20px; border: none; padding: 0; background: none; cursor: pointer; }
         .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; background: #0f0f0f; padding: 8px; border-radius: 4px; border: 1px solid #222; }
-        
         #toggle-ui { position: absolute; top: 15px; left: 420px; z-index: 25; background: #000; color: #fff; border: 1px solid #333; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
         #ui-panel.hidden + #toggle-ui { left: 15px; }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="loader-text">ANALYZING TRACK</div>
-        <div class="loader-sub">Scanning Frequencies & Calibrating Ceilings...</div>
+    <div id="loader" class="overlay">
+        <div style="font-size: 20px; color: var(--accent); font-weight: bold;">ANALYZING TRACK</div>
+    </div>
+
+    <div id="tweak-modal" class="overlay">
+        <div class="tweak-container">
+            <div class="close-btn" onclick="closeTweak()">×</div>
+            <h2 style="border:none; text-align:center;">Tweak Band <span id="tweak-band-id"></span></h2>
+            
+            <div id="tweak-graph" onmousedown="startDragTweak(event)">
+                <div id="tweak-bar"></div>
+                <div id="tweak-thresh"></div>
+            </div>
+
+            <label>Response Shape</label>
+            <div class="shape-btn-row">
+                <button class="shape-btn" id="shape-square" onclick="setTweakShape('square')">Square<br>(Raw)</button>
+                <button class="shape-btn" id="shape-triangle" onclick="setTweakShape('triangle')">Triangle<br>(Punchy)</button>
+                <button class="shape-btn" id="shape-sine" onclick="setTweakShape('sine')">Sine<br>(Smooth)</button>
+            </div>
+
+            <button class="react-btn" id="tweak-react-btn" onclick="toggleReact()">
+                MASTER REACT
+                <div style="font-size:8px; font-weight:normal; margin-top:5px; opacity:0.7">Force screen to shake on THIS bar</div>
+            </button>
+        </div>
     </div>
 
     <div id="flash-layer"></div>
     <canvas id="canvas-layer"></canvas>
     <div id="logo-container"></div>
-    <button id="toggle-ui" onclick="toggleUI()">OPEN SCULPTOR</button>
+    <button id="toggle-ui" onclick="toggleUI()">OPEN ENGINE</button>
 
     <div id="ui-panel" id="panel">
-        <h2>Phonk V27 <span style="font-size:9px; opacity:0.5">THE ANALYST</span></h2>
+        <h2>Phonk V28 <span style="font-size:9px; opacity:0.5">TWEAK BENCH</span></h2>
 
         <div class="control-group">
-            <label>Track (Auto-Analysis on Load)</label>
+            <label>Track</label>
             <input type="file" id="file-in" accept="audio/*">
-            <audio id="audio" controls style="width:100%; margin-top:5px; height:20px; opacity:0.6; display:none;"></audio>
-            <div style="display:flex; gap:5px; margin-top:5px;">
-                <button id="play-btn" onclick="togglePlay()" disabled style="flex:1; background:#111; border:1px solid #333; color:#555; padding:5px; cursor:pointer;">PLAY</button>
-            </div>
+            <button id="play-btn" onclick="togglePlay()" disabled style="width:100%; margin-top:5px; background:#111; border:1px solid #333; color:#555; padding:5px; cursor:pointer;">LOAD A SONG</button>
         </div>
-        
         <div class="control-group">
             <label>Image</label>
             <input type="file" id="img-in" accept="image/*">
         </div>
-        
-        <h3>1. Frequency Sculptor</h3>
-        <p style="font-size:9px; color:#555; margin-bottom:10px;">
-            • <b>Prioritize:</b> Makes that bar 50% stronger.<br>
-            • <b>Gain Slider:</b> Increase ceiling for that bar (Sensitivity).
-        </p>
+
+        <h3>1. Frequency Tweak</h3>
+        <p style="font-size:9px; color:#555; margin-bottom:10px;">Click the 🔍 icon to inspect and shape a specific bar.</p>
 
         <div class="sculptor-grid">
             <div class="sculpt-col">
-                <div class="graph-area" id="graph-0" onmousedown="startDrag(0, event)">
-                    <div class="audio-bar" id="bar-0"></div><div class="thresh-line" id="line-0" style="bottom: 80%;"></div>
-                </div>
+                <div class="graph-area"><div class="audio-bar" id="bar-0"></div><div class="thresh-line" id="line-0" style="bottom: 80%;"></div></div>
                 <div class="col-controls">
-                    <div class="freq-label">20Hz</div>
-                    <button class="prio-btn" id="btn-0" onclick="setPriority(0)">Prioritize</button>
-                    <div class="gain-wrapper">
-                        <span class="gain-label">GAIN</span>
-                        <input type="range" class="v-slider" id="gain-0" min="0.5" max="4.0" step="0.1" value="1.0" title="Individual Ceiling Gain">
-                    </div>
+                    <button class="tweak-trigger-btn" onclick="openTweak(0)">🔍</button>
+                    <div class="react-indicator" id="ind-0"></div>
                 </div>
             </div>
             <div class="sculpt-col">
-                <div class="graph-area" id="graph-1" onmousedown="startDrag(1, event)">
-                    <div class="audio-bar" id="bar-1"></div><div class="thresh-line" id="line-1" style="bottom: 60%;"></div>
-                </div>
+                <div class="graph-area"><div class="audio-bar" id="bar-1"></div><div class="thresh-line" id="line-1" style="bottom: 60%;"></div></div>
                 <div class="col-controls">
-                    <div class="freq-label">40Hz</div>
-                    <button class="prio-btn" id="btn-1" onclick="setPriority(1)">Prioritize</button>
-                    <div class="gain-wrapper">
-                        <span class="gain-label">GAIN</span>
-                        <input type="range" class="v-slider" id="gain-1" min="0.5" max="4.0" step="0.1" value="1.0" title="Individual Ceiling Gain">
-                    </div>
+                    <button class="tweak-trigger-btn" onclick="openTweak(1)">🔍</button>
+                    <div class="react-indicator" id="ind-1"></div>
                 </div>
             </div>
             <div class="sculpt-col">
-                <div class="graph-area" id="graph-2" onmousedown="startDrag(2, event)">
-                    <div class="audio-bar" id="bar-2"></div><div class="thresh-line" id="line-2" style="bottom: 65%;"></div>
-                </div>
+                <div class="graph-area"><div class="audio-bar" id="bar-2"></div><div class="thresh-line" id="line-2" style="bottom: 65%;"></div></div>
                 <div class="col-controls">
-                    <div class="freq-label">60Hz</div>
-                    <button class="prio-btn" id="btn-2" onclick="setPriority(2)">Prioritize</button>
-                    <div class="gain-wrapper">
-                        <span class="gain-label">GAIN</span>
-                        <input type="range" class="v-slider" id="gain-2" min="0.5" max="4.0" step="0.1" value="1.0" title="Individual Ceiling Gain">
-                    </div>
+                    <button class="tweak-trigger-btn" onclick="openTweak(2)">🔍</button>
+                    <div class="react-indicator" id="ind-2"></div>
                 </div>
             </div>
             <div class="sculpt-col">
-                <div class="graph-area" id="graph-3" onmousedown="startDrag(3, event)">
-                    <div class="audio-bar" id="bar-3"></div><div class="thresh-line" id="line-3" style="bottom: 85%;"></div>
-                </div>
+                <div class="graph-area"><div class="audio-bar" id="bar-3"></div><div class="thresh-line" id="line-3" style="bottom: 85%;"></div></div>
                 <div class="col-controls">
-                    <div class="freq-label">80Hz</div>
-                    <button class="prio-btn" id="btn-3" onclick="setPriority(3)">Prioritize</button>
-                    <div class="gain-wrapper">
-                        <span class="gain-label">GAIN</span>
-                        <input type="range" class="v-slider" id="gain-3" min="0.5" max="4.0" step="0.1" value="1.0" title="Individual Ceiling Gain">
-                    </div>
+                    <button class="tweak-trigger-btn" onclick="openTweak(3)">🔍</button>
+                    <div class="react-indicator" id="ind-3"></div>
                 </div>
             </div>
         </div>
 
-        <div class="control-group" style="background:#111; padding:10px; border:1px solid #333;">
-            <label style="color:#fff;">Master Pre-Amp (Auto-Set)</label>
+        <div class="control-group">
+            <label>Master Pre-Amp</label>
             <input type="range" id="pre-amp" min="0.5" max="3.0" step="0.1" value="1.0">
-            <div style="font-size:8px; color:#666; margin-top:3px;">Calculated from track analysis. Tweak if needed.</div>
         </div>
 
         <h3>2. Visuals</h3>
         <div class="control-group">
-            <label>Bar Shape</label>
+            <label>Output Shape (The Circle)</label>
             <select id="shape-select">
                 <option value="square">Square</option>
                 <option value="triangle">Triangle</option>
                 <option value="round">Round</option>
             </select>
-        </div>
-        <div class="color-row">
-            <div class="color-box"><label>Idle</label><input type="color" id="col-idle" value="#ffffff"></div>
-            <div class="color-box"><label>Flash</label><input type="color" id="col-bass" value="#ff0033"></div>
         </div>
         <div class="checkbox-row"><input type="checkbox" id="auto-color" checked onchange="toggleAutoColor()"><span style="font-size:10px;">Auto-Match Colors</span></div>
         <div class="checkbox-row"><input type="checkbox" id="freq-flash" checked><span style="font-size:10px;">Color Flash on Beat</span></div>
@@ -247,9 +203,11 @@
         </div>
     </div>
 
+    <input type="color" id="col-idle" value="#ffffff" style="display:none">
+    <input type="color" id="col-bass" value="#ff0033" style="display:none">
+
     <script>
         const dom = {
-            audio: document.getElementById('audio'),
             playBtn: document.getElementById('play-btn'),
             canvas: document.getElementById('canvas-layer'),
             ctx: document.getElementById('canvas-layer').getContext('2d'),
@@ -257,10 +215,13 @@
             flash: document.getElementById('flash-layer'),
             panel: document.getElementById('ui-panel'),
             loader: document.getElementById('loader'),
+            tweakModal: document.getElementById('tweak-modal'),
+            tweakBar: document.getElementById('tweak-bar'),
+            tweakThresh: document.getElementById('tweak-thresh'),
+            tweakReactBtn: document.getElementById('tweak-react-btn'),
             bars: [0,1,2,3].map(i => document.getElementById(`bar-${i}`)),
             lines: [0,1,2,3].map(i => document.getElementById(`line-${i}`)),
-            btns: [0,1,2,3].map(i => document.getElementById(`btn-${i}`)),
-            gains: [0,1,2,3].map(i => document.getElementById(`gain-${i}`)),
+            inds: [0,1,2,3].map(i => document.getElementById(`ind-${i}`)),
             colIdle: document.getElementById('col-idle'),
             colBass: document.getElementById('col-bass'),
             autoColor: document.getElementById('auto-color'),
@@ -272,94 +233,152 @@
         dom.canvas.height = window.innerHeight;
 
         const state = {
-            connected: false,
+            isPlaying: false,
             physics: 0,
             thresholds: [0.8, 0.6, 0.65, 0.85],
             extracted: { bass: '#ff0033', idle: '#ffffff' },
-            priorityBand: -1,
-            isPlaying: false
+            // NEW STATES
+            reactIndex: -1, // -1 means All, 0-3 means locked
+            bandSettings: [
+                { shape: 'triangle', val: 0 },
+                { shape: 'triangle', val: 0 },
+                { shape: 'triangle', val: 0 },
+                { shape: 'triangle', val: 0 }
+            ],
+            currentTweakIndex: -1
         };
+
+        // --- TWEAK LOGIC ---
+        window.openTweak = (idx) => {
+            state.currentTweakIndex = idx;
+            document.getElementById('tweak-band-id').innerText = (idx * 20 + 20) + "Hz";
+            
+            // Set Threshold Line Position
+            dom.tweakThresh.style.bottom = (state.thresholds[idx] * 100) + "%";
+            
+            // Set Buttons State
+            updateTweakUI();
+            
+            dom.tweakModal.classList.add('active');
+        };
+
+        window.closeTweak = () => {
+            state.currentTweakIndex = -1;
+            dom.tweakModal.classList.remove('active');
+        };
+
+        window.setTweakShape = (shape) => {
+            if(state.currentTweakIndex === -1) return;
+            state.bandSettings[state.currentTweakIndex].shape = shape;
+            updateTweakUI();
+        };
+
+        window.toggleReact = () => {
+            if(state.currentTweakIndex === -1) return;
+            // If we are already reacting to this bar, turn it off (-1)
+            // If not, set it to this bar
+            if(state.reactIndex === state.currentTweakIndex) {
+                state.reactIndex = -1;
+            } else {
+                state.reactIndex = state.currentTweakIndex;
+            }
+            updateTweakUI();
+            updateGridIndicators();
+        };
+
+        function updateTweakUI() {
+            const s = state.bandSettings[state.currentTweakIndex];
+            
+            // Shape Buttons
+            ['square','triangle','sine'].forEach(sh => {
+                const btn = document.getElementById(`shape-${sh}`);
+                if(s.shape === sh) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            // React Button
+            if(state.reactIndex === state.currentTweakIndex) {
+                dom.tweakReactBtn.classList.add('active');
+                dom.tweakReactBtn.innerHTML = "REACTING TO THIS BAR <br><span style='font-size:10px'>CLICK TO UNLINK</span>";
+            } else {
+                dom.tweakReactBtn.classList.remove('active');
+                dom.tweakReactBtn.innerHTML = "SET AS REACTION MASTER <br><span style='font-size:10px; opacity:0.5'>CLICK TO LINK PHYSICS</span>";
+            }
+        }
+
+        function updateGridIndicators() {
+            dom.inds.forEach((ind, i) => {
+                if(i === state.reactIndex) ind.classList.add('active');
+                else ind.classList.remove('active');
+            });
+        }
+
+        // Tweak Dragging Logic (Threshold)
+        function startDragTweak(e) {
+            document.addEventListener('mousemove', onDragTweak);
+            document.addEventListener('mouseup', endDragTweak);
+        }
+        function onDragTweak(e) {
+            const rect = document.getElementById('tweak-graph').getBoundingClientRect();
+            let y = 1.0 - ((e.clientY - rect.top) / rect.height);
+            if (y < 0) y = 0; if (y > 1) y = 1;
+            
+            // Update global threshold
+            if(state.currentTweakIndex !== -1) {
+                state.thresholds[state.currentTweakIndex] = y;
+                dom.tweakThresh.style.bottom = (y * 100) + "%";
+                // Also update the mini grid line
+                dom.lines[state.currentTweakIndex].style.bottom = (y * 100) + "%";
+            }
+        }
+        function endDragTweak() {
+            document.removeEventListener('mousemove', onDragTweak);
+            document.removeEventListener('mouseup', endDragTweak);
+        }
+
 
         // --- AUDIO ENGINE ---
         let audioCtx, source, analyser, audioBuffer;
 
-        // 1. FILE INPUT -> ANALYZE
         document.getElementById('file-in').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if(!file) return;
-
-            // Show Loader
             dom.loader.classList.add('active');
             dom.playBtn.disabled = true;
             dom.playBtn.innerText = "ANALYZING...";
 
             const arrayBuffer = await file.arrayBuffer();
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // Decode (This takes a moment for big files)
             try {
                 audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 analyzeTrack(audioBuffer);
-            } catch (err) {
-                console.error(err);
-                dom.loader.classList.remove('active');
-            }
+            } catch (err) { console.error(err); dom.loader.classList.remove('active'); }
         });
 
-        // 2. ANALYZE FUNCTION
         function analyzeTrack(buffer) {
-            const raw = buffer.getChannelData(0); // Left channel
-            const step = 5000; // Scan every 5000th sample to save CPU
-            let maxAmp = 0;
+            // Simplified analysis for pre-amp
+            const raw = buffer.getChannelData(0);
             let sum = 0;
-            let count = 0;
-
-            // Simple Peak and RMS scan
-            for (let i = 0; i < raw.length; i += step) {
-                const abs = Math.abs(raw[i]);
-                if (abs > maxAmp) maxAmp = abs;
-                sum += abs;
-                count++;
-            }
-            
-            const avg = sum / count;
-
-            // Auto-Set Pre-Amp based on average volume
-            // If song is quiet (low avg), boost Pre-Amp.
+            for (let i=0; i<raw.length; i+=10000) sum += Math.abs(raw[i]);
+            const avg = sum / (raw.length/10000);
             let suggestedPreAmp = 1.0;
             if (avg < 0.1) suggestedPreAmp = 2.0;
-            else if (avg < 0.2) suggestedPreAmp = 1.5;
-            else if (avg > 0.4) suggestedPreAmp = 0.8; // Loud song, lower it
-
+            else if (avg > 0.4) suggestedPreAmp = 0.8;
             dom.preAmp.value = suggestedPreAmp;
 
-            // Reset Gain Sliders to default
-            dom.gains.forEach(g => g.value = 1.0);
-
-            // Prepare Playback
             if (source) source.disconnect();
-            
-            // Ready UI
             dom.loader.classList.remove('active');
             dom.playBtn.disabled = false;
             dom.playBtn.innerText = "PLAY TRACK";
-            dom.playBtn.style.color = "#fff";
-            dom.playBtn.style.borderColor = "#fff";
-            
-            state.connected = true;
         }
 
-        // 3. PLAY TOGGLE
         window.togglePlay = () => {
             if(!audioBuffer) return;
-            
             if(state.isPlaying) {
-                // Stop
                 if(source) source.stop();
                 state.isPlaying = false;
                 dom.playBtn.innerText = "PLAY TRACK";
             } else {
-                // Play
                 if(audioCtx.state === 'suspended') audioCtx.resume();
                 source = audioCtx.createBufferSource();
                 source.buffer = audioBuffer;
@@ -368,14 +387,12 @@
                 source.connect(analyser);
                 source.connect(audioCtx.destination);
                 source.start(0);
-                
                 state.isPlaying = true;
                 dom.playBtn.innerText = "STOP TRACK";
                 loop();
             }
         }
 
-        // --- MAIN LOOP ---
         function loop() {
             if(!state.isPlaying) return;
             requestAnimationFrame(loop);
@@ -385,58 +402,70 @@
             analyser.getByteFrequencyData(data);
 
             const masterGain = parseFloat(dom.preAmp.value); 
-            const bands = [data[1], data[2], data[3], data[4]];
+            const rawBands = [data[1], data[2], data[3], data[4]];
+            
             let totalForce = 0;
-            let triggered = false;
+            let forceSources = 0; // How many bars contributed to force
 
-            bands.forEach((val, i) => {
-                // 1. Get Individual Gain for this bar
-                const barGain = parseFloat(dom.gains[i].value);
+            rawBands.forEach((rawVal, i) => {
+                let input = (rawVal / 255) * masterGain;
+                if(input > 1) input = 1;
+
+                // --- APPLY SHAPE SMOOTHING ---
+                const settings = state.bandSettings[i];
+                let processedVal = input;
+
+                if (settings.shape === 'square') {
+                    // No smoothing, just raw input
+                    processedVal = input;
+                } 
+                else if (settings.shape === 'triangle') {
+                    // Linear decay (Standard)
+                    if (input > settings.val) settings.val = input; // Instant attack
+                    else settings.val *= 0.85; // Linear decay
+                    processedVal = settings.val;
+                } 
+                else if (settings.shape === 'sine') {
+                    // Smooth rolling average
+                    settings.val = (settings.val * 0.9) + (input * 0.1);
+                    processedVal = settings.val * 1.5; // Boost sine slightly as it averages down
+                }
                 
-                // 2. Calculate Value (Value * MasterGain * IndividualGain)
-                let amplifiedVal = (val / 255) * masterGain * barGain;
+                // Store for next frame
+                state.bandSettings[i].val = processedVal;
+
+                // --- UI UPDATE ---
+                // Grid Bar
+                dom.bars[i].style.height = (processedVal * 100) + "%";
+                dom.bars[i].style.backgroundColor = (processedVal > state.thresholds[i]) ? dom.colBass.value : '#444';
                 
-                // Priority Boost
-                if (state.priorityBand === i) amplifiedVal *= 1.5; 
-
-                // 3. UI Update
-                // Clamp visual at 100%
-                let visualHeight = amplifiedVal;
-                let isClipping = false;
-
-                if(visualHeight > 1.0) {
-                    visualHeight = 1.0;
-                    isClipping = true;
+                // Tweak Bar (if open)
+                if(state.currentTweakIndex === i) {
+                    dom.tweakBar.style.height = (processedVal * 100) + "%";
+                    dom.tweakBar.style.backgroundColor = (processedVal > state.thresholds[i]) ? '#fff' : dom.colBass.value;
                 }
 
-                dom.bars[i].style.height = (visualHeight * 100) + "%";
-                
-                // Color Logic
-                if(isClipping) {
-                    dom.bars[i].className = 'audio-bar active clipping'; // White flash
-                } else if (amplifiedVal > state.thresholds[i]) {
-                    dom.bars[i].className = 'audio-bar active';
-                    dom.bars[i].style.backgroundColor = dom.colBass.value;
+                // --- PHYSICS CALCULATION ---
+                // If React Index is set, ONLY calculate force if i == reactIndex
+                if (state.reactIndex !== -1) {
+                    if (state.reactIndex === i) {
+                        const thresh = state.thresholds[i];
+                        if (processedVal > thresh) {
+                            totalForce = (processedVal - thresh) * 3.0; // Boost single source
+                        }
+                    }
                 } else {
-                    dom.bars[i].className = 'audio-bar';
-                    dom.bars[i].style.backgroundColor = (state.priorityBand === i) ? '#888' : '#444';
-                }
-
-                // 4. Trigger Physics
-                const thresh = state.thresholds[i];
-                if (amplifiedVal > thresh) {
-                    let excess = amplifiedVal - thresh;
-                    totalForce += excess;
-                    triggered = true;
+                    // Normal Mode: Sum all triggers
+                    const thresh = state.thresholds[i];
+                    if (processedVal > thresh) {
+                        totalForce += (processedVal - thresh);
+                    }
                 }
             });
 
             // Physics Smoothing
-            const sensitivity = 2.0; 
-            let push = totalForce * sensitivity;
-
-            if (push > state.physics) state.physics = push;
-            else state.physics *= 0.82; 
+            if (totalForce > state.physics) state.physics = totalForce;
+            else state.physics *= 0.85; 
             
             if(state.physics > 2.5) state.physics = 2.5;
             if(state.physics < 0.001) state.physics = 0;
@@ -456,19 +485,13 @@
             const shape = dom.shapeSelect.value;
             const gain = parseFloat(dom.preAmp.value);
 
+            // Color Mixing
             const cIdle = hexToRgb(dom.colIdle.value);
             const cBass = hexToRgb(dom.colBass.value);
-            
-            let flashMix = 0;
-            if(dom.freqFlash.checked) flashMix = phys; 
-            if(flashMix > 1) flashMix = 1;
+            let flashMix = (dom.freqFlash.checked) ? Math.min(phys, 1) : 0;
+            const finalColor = `rgb(${cIdle.r + (cBass.r - cIdle.r) * flashMix},${cIdle.g + (cBass.g - cIdle.g) * flashMix},${cIdle.b + (cBass.b - cIdle.b) * flashMix})`;
 
-            const r = cIdle.r + (cBass.r - cIdle.r) * flashMix;
-            const g = cIdle.g + (cBass.g - cIdle.g) * flashMix;
-            const b = cIdle.b + (cBass.b - cIdle.b) * flashMix;
-            const finalColor = `rgb(${r},${g},${b})`;
-
-            const rad = baseRad + (phys * 18);
+            const rad = baseRad + (phys * 25); // Physics applies to radius
 
             ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
             ctx.fillStyle = finalColor;
@@ -481,9 +504,13 @@
                 let val = (data[index] / 255) * gain; 
                 if(val > 1) val = 1;
 
+                // If React Mode is ON, we modulate the BAR LENGTH based on physics too, to make it snap
                 let h = val * maxLen;
-                if(h < 4) h = 4;
+                if (state.reactIndex !== -1) {
+                    h = h * (0.5 + (phys * 0.5)); // Make bars react to the master beat
+                }
 
+                if(h < 4) h = 4;
                 drawBar(ctx, cx, cy, rad, w, h, (i * angleStep) - (Math.PI/2), shape);
                 drawBar(ctx, cx, cy, rad, w, h, -(i * angleStep) - (Math.PI/2), shape);
             }
@@ -509,11 +536,11 @@
             if (p > 0.01) {
                 if(document.getElementById('fx-zoom').checked) s += (p * 0.15); 
                 if(document.getElementById('fx-shake').checked) {
-                    const shake = p * 12; 
+                    const shake = p * 15; 
                     x = (Math.random()-0.5) * shake;
                     y = (Math.random()-0.5) * shake;
                 }
-                if(document.getElementById('fx-flash').checked) f = p * 0.4;
+                if(document.getElementById('fx-flash').checked) f = p * 0.5;
             }
             dom.logo.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${s})`;
             dom.logo.style.borderColor = `rgba(255,255,255,${0.05 + p})`; 
@@ -527,26 +554,6 @@
         }
         window.toggleUI = () => dom.panel.classList.toggle('hidden');
         window.toggleAutoColor = () => { if(dom.autoColor.checked) { dom.colBass.value = state.extracted.bass; dom.colIdle.value = state.extracted.idle; } }
-        window.setPriority = (idx) => {
-            state.priorityBand = (state.priorityBand === idx) ? -1 : idx;
-            dom.btns.forEach((btn, i) => {
-                if (i === state.priorityBand) { btn.classList.add('active'); btn.innerText = "ACTIVE"; } 
-                else { btn.classList.remove('active'); btn.innerText = "PRIORITIZE"; }
-            });
-        };
-        
-        // Threshold Dragging
-        let dragTarget = -1;
-        function startDrag(index, e) { dragTarget = index; updateDrag(e); document.addEventListener('mousemove', onDrag); document.addEventListener('mouseup', endDrag); }
-        function onDrag(e) { if(dragTarget !== -1) updateDrag(e); }
-        function endDrag() { dragTarget = -1; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', endDrag); }
-        function updateDrag(e) {
-            const rect = document.getElementById(`graph-${dragTarget}`).getBoundingClientRect();
-            let y = 1.0 - ((e.clientY - rect.top) / rect.height);
-            if (y < 0) y = 0; if (y > 1) y = 1;
-            state.thresholds[dragTarget] = y;
-            dom.lines[dragTarget].style.bottom = (y * 100) + "%";
-        }
 
         document.getElementById('img-in').addEventListener('change', e => {
             const u = URL.createObjectURL(e.target.files[0]);
