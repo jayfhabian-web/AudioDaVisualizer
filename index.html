@@ -2,21 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phonk Engine V11 - True Bass Isolation</title>
+    <title>Phonk Engine V12 - Specterr Style</title>
     <style>
         /* --- THEME --- */
         :root {
             --bg: #050505;
-            --panel: rgba(10, 10, 10, 0.95);
+            --panel: rgba(15, 15, 15, 0.95);
             --border: rgba(255, 255, 255, 0.1);
             --primary: #ff0055;
             --text: #e0e0e0;
         }
+
         body { margin: 0; background: var(--bg); font-family: 'Segoe UI', sans-serif; overflow: hidden; color: var(--text); }
         
-        /* LAYERS */
+        /* VISUAL LAYERS */
         #flash-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; opacity: 0; mix-blend-mode: overlay; }
         #canvas-layer { position: absolute; top: 0; left: 0; z-index: 1; }
+        
         #logo-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 300px; height: 300px; z-index: 5; border-radius: 50%; 
@@ -24,7 +26,7 @@
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
 
-        /* CONTROLS */
+        /* UI PANEL */
         #ui-panel {
             position: absolute; top: 0; left: 0; width: 340px; height: 100vh;
             background: var(--panel); border-right: 1px solid var(--border);
@@ -35,25 +37,31 @@
 
         h2 { font-size: 16px; margin: 0 0 20px 0; border-bottom: 2px solid var(--primary); display: inline-block; padding-bottom: 5px; color: #fff; }
         h3 { font-size: 11px; text-transform: uppercase; color: #666; margin-top: 25px; border-bottom: 1px solid #222; padding-bottom: 5px; }
+
         .control-group { margin-bottom: 12px; }
         label { display: flex; justify-content: space-between; font-size: 11px; color: #bbb; margin-bottom: 6px; font-weight: 600; }
+
+        /* INPUTS */
         input[type="range"] { width: 100%; height: 4px; background: #333; border-radius: 2px; appearance: none; cursor: pointer; }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: white; border-radius: 50%; }
-        input[type="file"] { width: 100%; background: #1a1a1a; border: 1px solid #333; color: #888; padding: 6px; border-radius: 4px; font-size: 11px; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: white; border-radius: 50%; box-shadow: 0 0 4px rgba(255,255,255,0.5); }
+        
+        input[type="file"] { width: 100%; background: #222; border: 1px solid #333; color: #888; padding: 6px; border-radius: 4px; font-size: 11px; }
         input[type="color"] { width: 100%; height: 30px; border: none; background: none; cursor: pointer; padding: 0; }
         
-        .checkbox-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background: #1a1a1a; padding: 10px; border-radius: 4px; border: 1px solid #333; }
+        .checkbox-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background: #222; padding: 8px; border-radius: 4px; border: 1px solid #333; }
         
         /* BASS METER */
         .meter-box { height: 6px; background: #111; border-radius: 3px; position: relative; overflow: hidden; margin-top: 5px; border: 1px solid #333; }
         .meter-fill { height: 100%; width: 0%; background: #00ff00; transition: width 0.05s linear; }
         .meter-line { position: absolute; top: 0; bottom: 0; width: 2px; background: red; z-index: 2; }
 
-        /* FX STACK */
+        /* FX CARDS */
         .fx-card { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 5px; margin-bottom: 8px; border: 1px solid #333; }
         .fx-head { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 5px; color: #fff; }
         .btn-add { width: 100%; background: transparent; border: 1px dashed #444; color: #888; padding: 8px; cursor: pointer; font-size: 10px; margin-top: 5px; }
         .btn-add:hover { border-color: var(--primary); color: white; }
+
+        /* TOGGLE BUTTON */
         #toggle-ui { position: absolute; top: 20px; left: 360px; z-index: 25; background: #111; color: white; border: 1px solid #444; padding: 8px 16px; cursor: pointer; border-radius: 20px; font-size: 11px; transition: left 0.3s; }
         #ui-panel.hidden + #toggle-ui { left: 20px; }
     </style>
@@ -66,7 +74,7 @@
     <button id="toggle-ui" onclick="toggleUI()">Hide Controls</button>
 
     <div id="ui-panel" id="panel">
-        <h2>PHONK ENGINE V11</h2>
+        <h2>PHONK ENGINE V12</h2>
 
         <div class="control-group">
             <label>Audio</label>
@@ -86,37 +94,39 @@
         <div class="control-group" id="manual-colors" style="display:none; opacity: 0.5;">
             <div style="display: flex; gap: 10px;">
                 <div style="flex:1"><label>Bass Color</label><input type="color" id="col-bass" value="#ff0055"></div>
-                <div style="flex:1"><label>Audio Color</label><input type="color" id="col-audio" value="#ffffff"></div>
+                <div style="flex:1"><label>Melody Color</label><input type="color" id="col-audio" value="#ffffff"></div>
             </div>
         </div>
 
-        <h3>Isolation Engine</h3>
+        <h3>Reactivity & Sensitivity</h3>
+        
         <div class="control-group">
-            <label>Filter Cutoff (Remove Melody) <span id="v-cutoff">150 Hz</span></label>
-            <input type="range" id="cutoff" min="50" max="400" value="150" oninput="updCutoff(this.value)">
+            <label style="color:var(--primary);">Bass Sensitivity (Boost Logic)</label>
+            <input type="range" id="bass-sens" min="1" max="3" step="0.1" value="1.5" oninput="upd('v-sens', this.value)">
+            <label style="font-weight:normal; margin-top:2px;">Multiplier: <span id="v-sens">1.5</span>x</label>
         </div>
 
         <div class="control-group">
-            <label>Bass Threshold</label>
+            <label>Bass Threshold (Gate)</label>
             <div class="meter-box">
                 <div id="thresh-line" class="meter-line" style="left:50%"></div>
                 <div id="meter-fill" class="meter-fill"></div>
             </div>
-            <input type="range" id="thresh" min="0" max="255" value="140" oninput="updThresh(this.value)" style="margin-top:5px;">
-        </div>
-        <div class="control-group">
-            <label>Decay (Physics) <span id="v-decay">0.85</span></label>
-            <input type="range" id="decay" min="0.1" max="0.95" step="0.05" value="0.85" oninput="upd('v-decay', this.value)">
+            <input type="range" id="thresh" min="0" max="255" value="130" oninput="updThresh(this.value)" style="margin-top:5px;">
         </div>
 
-        <h3>Visuals</h3>
+        <h3>Specterr Style</h3>
         <div class="control-group">
-            <label>Bass Bar Split <span id="v-split">4</span></label>
-            <input type="range" id="bass-split" min="1" max="16" value="4" oninput="upd('v-split', this.value)">
+            <label>Bass/Melody Split Point <span id="v-split">4</span></label>
+            <input type="range" id="bass-split" min="1" max="20" value="5" oninput="upd('v-split', this.value)">
         </div>
         <div class="control-group">
-            <label>Bass Pop Intensity</label>
-            <input type="range" id="bass-pop" min="1" max="3" step="0.1" value="1.6">
+            <label>Bass Bar Pop (Height Boost)</label>
+            <input type="range" id="bass-pop" min="1" max="4" step="0.1" value="1.5">
+        </div>
+        <div class="control-group">
+            <label>Total Bar Height</label>
+            <input type="range" id="global-scale" min="0.5" max="2" step="0.1" value="1.0">
         </div>
 
         <h3>Effects</h3>
@@ -130,6 +140,7 @@
     </div>
 
     <script>
+        // --- SETUP ---
         const dom = {
             audio: document.getElementById('audio'),
             canvas: document.getElementById('canvas-layer'),
@@ -154,127 +165,112 @@
             extractedColors: { bass: '#ff0055', audio: '#ffffff' }
         };
 
-        // AUDIO NODES
-        let audioCtx, source, analyser, filter;
+        let audioCtx, source, analyser;
 
-        // --- NEW: COLOR EXTRACTION ---
-        function extractColorsFromImage(imgElement) {
-            const c = document.createElement('canvas');
-            const x = c.getContext('2d');
-            c.width = imgElement.width; c.height = imgElement.height;
-            x.drawImage(imgElement, 0, 0, c.width, c.height);
-            const p1 = x.getImageData(c.width/2, c.height/2, 1, 1).data;
-            const hex1 = rgbToHex(p1[0], p1[1], p1[2]);
-            const p2 = x.getImageData(10, 10, 1, 1).data;
-            const hex2 = rgbToHex(p2[0], p2[1], p2[2]);
-            state.extractedColors.bass = hex1;
-            state.extractedColors.audio = hex2;
-            if(dom.autoColorCheck.checked) { dom.colBass.value = hex1; dom.colAudio.value = hex2; }
-        }
-        function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); }
-        window.toggleAutoColor = () => {
-            const isAuto = dom.autoColorCheck.checked;
-            document.getElementById('manual-colors').style.display = isAuto ? 'none' : 'block';
-            if(isAuto) { dom.colBass.value = state.extractedColors.bass; dom.colAudio.value = state.extractedColors.audio; }
-        }
-
-        // --- NEW: FILTERED AUDIO ENGINE ---
+        // --- 1. AUDIO GRAPH (Full Spectrum) ---
         dom.audio.addEventListener('play', () => {
             if(state.connected) { if(audioCtx.state === 'suspended') audioCtx.resume(); return; }
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 source = audioCtx.createMediaElementSource(dom.audio);
-                
-                // 1. Create the Analyser
                 analyser = audioCtx.createAnalyser();
                 analyser.fftSize = state.fftSize;
 
-                // 2. Create the LowPass Filter (The "Wall" for Melody)
-                filter = audioCtx.createBiquadFilter();
-                filter.type = "lowpass";
-                filter.frequency.value = 150; // Default cutoff
-
-                // 3. Routing
-                // Path A: Source -> Destination (Ears hear full audio)
-                source.connect(audioCtx.destination);
-
-                // Path B: Source -> Filter -> Analyser (Engine hears only Bass)
-                source.connect(filter);
-                filter.connect(analyser);
+                // Direct Connection: No hardware filters.
+                // We want to SEE the melody, even if we don't ZOOM to it.
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
 
                 state.connected = true;
                 loop();
             } catch(e) { console.error(e); }
         });
 
+        // --- 2. RENDER LOOP ---
         function loop() {
             requestAnimationFrame(loop);
             const buffer = analyser.frequencyBinCount;
             const data = new Uint8Array(buffer);
             analyser.getByteFrequencyData(data);
 
-            // Because of the LowPass filter, everything above index 5 is already dead silent.
-            // We just need to check the volume of what's left.
-            let raw = 0;
-            // Summing first 8 bins (0-300Hz approx) for total bass energy
-            for(let i=0; i<8; i++) raw += data[i];
-            raw = raw / 8;
-
-            dom.meter.style.width = (raw / 255 * 100) + "%";
+            // A. CALCULATE BASS PHYSICS (Internal Logic)
+            // We manually look at indices 0-4 (Low Freqs)
+            let rawBass = (data[0] + data[1] + data[2] + data[3]) / 4;
             
+            // Apply User Sensitivity (Multiplier)
+            const sensitivity = parseFloat(document.getElementById('bass-sens').value);
+            rawBass = Math.min(255, rawBass * sensitivity);
+
+            // Update UI Meter
+            dom.meter.style.width = (rawBass / 255 * 100) + "%";
+
+            // Threshold Logic
             const thresh = parseInt(document.getElementById('thresh').value);
             let active = 0;
-            if(raw > thresh) active = (raw - thresh) / (255 - thresh);
-            
-            const dec = parseFloat(document.getElementById('decay').value);
-            if(active > state.bassVal) state.bassVal = active; else state.bassVal *= dec;
+            if(rawBass > thresh) active = (rawBass - thresh) / (255 - thresh);
 
+            // Decay (Smoothing)
+            if(active > state.bassVal) state.bassVal = active; 
+            else state.bassVal *= 0.85; // Fixed decay for snappy feel
+
+            // B. APPLY EFFECTS
             applyFx(state.bassVal);
+
+            // C. DRAW BARS (Full Spectrum)
             draw(data, buffer, state.bassVal);
         }
 
-        function draw(data, count, bass) {
+        function draw(data, count, bassPhysics) {
             const ctx = dom.ctx;
             const cx = dom.canvas.width / 2;
             const cy = dom.canvas.height / 2;
-            const rad = 150 + (bass * 40);
+            const rad = 150 + (bassPhysics * 40); // Circle grows with bass
+
             const colBass = dom.colBass.value;
             const colAudio = dom.colAudio.value;
-            const split = parseInt(document.getElementById('bass-split').value);
+            const splitIndex = parseInt(document.getElementById('bass-split').value);
             const pop = parseFloat(document.getElementById('bass-pop').value);
+            const globalScale = parseFloat(document.getElementById('global-scale').value);
 
             ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
             ctx.lineWidth = (600 / count);
             ctx.lineCap = 'round';
 
-            // NOTE: 'data' here is the FILTERED data (Bass only). 
-            // If we want to visualize the full spectrum, we'd need a second analyser.
-            // For Phonk, visualizing just the bass punch is often cleaner, 
-            // but the bars on the right might be flat. 
-            // *Fix*: We will simulate the high bars for now or leave them reacting to bass (Sync style).
-            
+            // Loop through ALL frequencies (Bass + Melody)
             for(let i = 0; i < count; i++) {
-                let h = data[i] * 0.8;
-                let isBass = i < split;
-                ctx.strokeStyle = isBass ? colBass : colAudio;
-                
-                if (isBass) {
-                    h *= (1 + (bass * (pop - 1)));
-                    ctx.shadowBlur = 20; ctx.shadowColor = colBass;
+                let val = data[i];
+                let h = val * 0.8 * globalScale; 
+
+                // Styling Logic
+                const isBassBar = i < splitIndex;
+
+                if (isBassBar) {
+                    ctx.strokeStyle = colBass;
+                    // Apply "Pop" to bass bars using the physics value
+                    h *= (1 + (bassPhysics * (pop - 1)));
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = colBass;
                 } else {
+                    ctx.strokeStyle = colAudio;
                     ctx.shadowBlur = 0;
                 }
-                
+
                 const ang = (i * 2 * Math.PI) / count - (Math.PI/2);
+                
+                // Draw
                 const x0 = cx + Math.cos(ang) * (rad + 5);
                 const y0 = cy + Math.sin(ang) * (rad + 5);
                 const x1 = cx + Math.cos(ang) * (rad + 5 + h);
                 const y1 = cy + Math.sin(ang) * (rad + 5 + h);
 
-                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+                ctx.beginPath(); 
+                ctx.moveTo(x0, y0); 
+                ctx.lineTo(x1, y1); 
+                ctx.stroke();
             }
         }
 
+        // --- 3. EFFECTS ---
         function applyFx(b) {
             let s=1, r=0, x=0, y=0, e=0;
             state.effects.forEach(f => {
@@ -289,14 +285,36 @@
             dom.flash.style.background = e > 0 ? 'white' : 'black';
         }
 
-        // UTILS
+        // --- 4. UTILS & COLORS ---
+        function extractColorsFromImage(imgElement) {
+            const c = document.createElement('canvas'); const x = c.getContext('2d');
+            c.width = imgElement.width; c.height = imgElement.height;
+            x.drawImage(imgElement, 0, 0, c.width, c.height);
+            // Center (Bass)
+            const p1 = x.getImageData(c.width/2, c.height/2, 1, 1).data;
+            // Top Left (Melody)
+            const p2 = x.getImageData(10, 10, 1, 1).data;
+            
+            state.extractedColors.bass = rgbToHex(p1[0], p1[1], p1[2]);
+            state.extractedColors.audio = rgbToHex(p2[0], p2[1], p2[2]);
+            
+            if(dom.autoColorCheck.checked) { 
+                dom.colBass.value = state.extractedColors.bass; 
+                dom.colAudio.value = state.extractedColors.audio; 
+            }
+        }
+        function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); }
+        window.toggleAutoColor = () => {
+            const isAuto = dom.autoColorCheck.checked;
+            document.getElementById('manual-colors').style.display = isAuto ? 'none' : 'block';
+            if(isAuto) { dom.colBass.value = state.extractedColors.bass; dom.colAudio.value = state.extractedColors.audio; }
+        }
+
+        // General UI
         window.upd = (id, v) => document.getElementById(id).innerText = v;
         window.updThresh = (v) => { upd('thresh', v); dom.tLine.style.left = (v/255*100) + '%'; }
-        window.updCutoff = (v) => {
-            document.getElementById('v-cutoff').innerText = v + " Hz";
-            if(filter) filter.frequency.value = v;
-        }
         window.toggleUI = () => dom.panel.classList.toggle('hidden');
+        
         document.getElementById('file-in').addEventListener('change', e => { dom.audio.src = URL.createObjectURL(e.target.files[0]); dom.audio.play(); });
         document.getElementById('img-in').addEventListener('change', e => {
             const url = URL.createObjectURL(e.target.files[0]);
@@ -304,6 +322,7 @@
             const img = new Image(); img.src = url; img.onload = () => extractColorsFromImage(img);
         });
         
+        // Stack
         function renderStack() {
             const el = document.getElementById('stack'); el.innerHTML = '';
             state.effects.forEach(f => {
